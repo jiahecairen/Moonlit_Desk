@@ -6,10 +6,16 @@ Write in a rich-text editor or switch to Markdown. Insert, drop, or paste images
 publish a generated site to GitHub, and keep deduplicated versions of articles and
 their local assets. Connect your own Hexo project without changing the tool's source.
 
+## Detailed documentation
+
+- [完整项目说明：功能、架构、API、配置、备份恢复与限制](docs/PROJECT_GUIDE.zh-CN.md)
+- [开发交接：当前状态、验证、关键约束与后续入口](docs/HANDOFF.zh-CN.md)
+- [可复制的交接开发提示词](docs/DEVELOPER_PROMPT.zh-CN.md)
+
 ## Requirements
 
 - macOS 13 or later for the menu bar app
-- Node.js 20 or later and npm
+- Node.js 20.19 or later and npm (Node.js 22 LTS recommended)
 - An existing Hexo project with its dependencies installed
 - Git and GitHub CLI for publishing
 - Xcode Command Line Tools to build the Swift app
@@ -60,10 +66,14 @@ you add the app name or the current site's name, or replace the moon with a cust
 symbol. Changes persist across launches; site names follow `_config.yml` changes.
 
 Moon illumination follows the current time, including daytime and times when the
-Moon is below the horizon. System location adjusts the illuminated limb's angle
-for the observer. Allow macOS location access, or disable automatic location and
-enter latitude/longitude in the settings panel. If location is unavailable, the
-phase remains current with a standard orientation. Coordinates stay on this Mac.
+Moon is below the horizon. By default, the observer's approximate location comes
+from the system time zone and an offline IANA city-coordinate table: no GPS,
+location permission prompt, or IP request. Choose optional IP city lookup or
+manual latitude/longitude in the settings panel. IP mode contacts ipapi.co, caches
+results for six hours, and falls back to the time zone when unavailable. VPNs can
+affect IP results. A time zone identifies a representative city, not your actual
+position. Unknown zones retain the current phase with a standard orientation.
+The icon uses the same eight color moon emoji as the website.
 The compact icon uses approximate SunCalc astronomy formulas, not an observation
 of visibility or weather. See [third-party notices](THIRD_PARTY_NOTICES.md).
 
@@ -115,7 +125,7 @@ Local settings live outside this repository:
 ~/Library/Application Support/Moonlit Desk/settings.json
 ~~~
 
-Supported keys are projectPath, backupFolder, and bilingual. CLI environment
+Supported keys include projectPath and backupFolder; bilingual is a legacy key. CLI environment
 overrides include MOONLIT_PROJECT, MOONLIT_ARTICLE_BACKUPS, MOONLIT_SETTINGS,
 and EDITOR_PORT.
 

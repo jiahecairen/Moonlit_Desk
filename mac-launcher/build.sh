@@ -15,9 +15,10 @@ if [ ! -d "$studio_dir/node_modules" ]; then
 fi
 /usr/bin/ditto "$studio_dir/editor" "$bundle/Contents/Resources/editor"
 /usr/bin/ditto "$studio_dir/node_modules" "$bundle/Contents/Resources/node_modules"
+cp "$source_dir/Resources/zone.tab" "$bundle/Contents/Resources/zone.tab"
 cp "$studio_dir/THIRD_PARTY_NOTICES.md" "$bundle/Contents/Resources/THIRD_PARTY_NOTICES.md"
 
-swiftc -swift-version 5 -O "$source_dir/Services.swift" "$source_dir/EditorFeature.swift" "$source_dir/ProjectCreator.swift" "$source_dir/LunarPhase.swift" "$source_dir/MoonIcon.swift" "$source_dir/StatusAppearance.swift" "$source_dir/main.swift" \
+swiftc -swift-version 5 -O "$source_dir/Services.swift" "$source_dir/EditorFeature.swift" "$source_dir/ProjectCreator.swift" "$source_dir/LunarPhase.swift" "$source_dir/MoonLocation.swift" "$source_dir/MoonIcon.swift" "$source_dir/StatusAppearance.swift" "$source_dir/main.swift" \
   -o "$bundle/Contents/MacOS/MoonlitDesk"
 /usr/bin/plutil -create xml1 "$bundle/Contents/Info.plist"
 manifest="$bundle/Contents/Info.plist"
@@ -27,8 +28,6 @@ manifest="$bundle/Contents/Info.plist"
 /usr/bin/plutil -insert CFBundlePackageType -string APPL "$manifest"
 /usr/bin/plutil -insert CFBundleShortVersionString -string 1.1 "$manifest"
 /usr/bin/plutil -insert CFBundleVersion -string 2 "$manifest"
-/usr/bin/plutil -insert NSLocationWhenInUseUsageDescription -string "根据当前位置调整菜单栏月相图标的朝向。坐标仅保存在本机，也可以在月相设置中手动填写。" "$manifest"
-/usr/bin/plutil -insert NSLocationUsageDescription -string "根据当前位置调整菜单栏月相图标的朝向，坐标仅保存在本机。" "$manifest"
 /usr/bin/plutil -insert LSUIElement -bool YES "$manifest"
 /usr/bin/plutil -insert MoonlitDeskPath -string "$studio_dir" "$manifest"
 /usr/bin/codesign --force --sign - "$bundle"

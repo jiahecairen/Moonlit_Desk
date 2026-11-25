@@ -26,3 +26,8 @@ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRU
 HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
 TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## IANA time-zone coordinate table
+
+`mac-launcher/Resources/zone.tab` is from https://data.iana.org/time-zones/tzdb/zone.tab (retrieved 2026-11-25). Its file header declares it public domain. The header is retained in the bundled table.
