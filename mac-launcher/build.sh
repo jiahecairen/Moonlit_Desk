@@ -17,7 +17,7 @@ fi
 /usr/bin/ditto "$studio_dir/node_modules" "$bundle/Contents/Resources/node_modules"
 cp "$studio_dir/THIRD_PARTY_NOTICES.md" "$bundle/Contents/Resources/THIRD_PARTY_NOTICES.md"
 
-swiftc -swift-version 5 -O "$source_dir/Services.swift" "$source_dir/EditorFeature.swift" "$source_dir/ProjectCreator.swift" "$source_dir/LunarPhase.swift" "$source_dir/StatusAppearance.swift" "$source_dir/main.swift" \
+swiftc -swift-version 5 -O "$source_dir/Services.swift" "$source_dir/EditorFeature.swift" "$source_dir/ProjectCreator.swift" "$source_dir/LunarPhase.swift" "$source_dir/MoonIcon.swift" "$source_dir/StatusAppearance.swift" "$source_dir/main.swift" \
   -o "$bundle/Contents/MacOS/MoonlitDesk"
 /usr/bin/plutil -create xml1 "$bundle/Contents/Info.plist"
 manifest="$bundle/Contents/Info.plist"

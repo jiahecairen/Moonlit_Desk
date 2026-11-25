@@ -39,7 +39,7 @@ final class StatusAppearance: NSObject, @preconcurrency CLLocationManagerDelegat
         let custom = defaults.string(forKey: "menuCustomIcon") ?? "✦"
         let customMode = defaults.string(forKey: "menuIconMode") == "custom"
         button.title = customMode ? custom + (name.isEmpty ? "" : " " + name) : name
-        button.image = customMode ? nil : Self.image(lunar)
+        button.image = customMode ? nil : MoonIcon.image(lunar)
         button.imagePosition = name.isEmpty ? .imageOnly : .imageLeading
         // Custom symbols are text, so imageOnly must not hide them.
         if customMode { button.imagePosition = .noImage }
@@ -48,34 +48,6 @@ final class StatusAppearance: NSObject, @preconcurrency CLLocationManagerDelegat
         button.toolTip = "\(lunar.name) · 照明 \(Int((lunar.fraction * 100).rounded()))%\n\(location) · \(mode)\n按当前时间计算，白天及地平线下也显示"
         button.setAccessibilityLabel("\(lunar.name)，照明 \(Int((lunar.fraction * 100).rounded()))%，\(name.isEmpty ? "博客工具" : name)")
         if automatic && Date().timeIntervalSince(lastLocationRequest) > 3600 { requestLocation() }
-    }
-
-    private static func image(_ lunar: LunarPhase) -> NSImage {
-        let image = NSImage(size: NSSize(width: 19, height: 19), flipped: false) { rect in
-            let circle = NSBezierPath(ovalIn: rect.insetBy(dx: 1.5, dy: 1.5))
-            NSColor.black.withAlphaComponent(0.17).setFill(); circle.fill()
-            let path = NSBezierPath()
-            let angle = lunar.screenRotation
-            func point(_ x: Double, _ y: Double) -> NSPoint {
-                NSPoint(x: 9.5 + 8 * (x * cos(angle) - y * sin(angle)),
-                        y: 9.5 + 8 * (x * sin(angle) + y * cos(angle)))
-            }
-            for i in 0...160 {
-                let y = 1 - Double(i) / 80
-                let x = sqrt(max(0, 1 - y * y))
-                if i == 0 { path.move(to: point(x, y)) } else { path.line(to: point(x, y)) }
-            }
-            for i in 0...160 {
-                let y = -1 + Double(i) / 80
-                let x = (1 - 2 * lunar.fraction) * sqrt(max(0, 1 - y * y))
-                path.line(to: point(x, y))
-            }
-            path.close(); NSColor.black.setFill(); path.fill()
-            NSColor.black.withAlphaComponent(0.5).setStroke(); circle.lineWidth = 0.65; circle.stroke()
-            return true
-        }
-        image.isTemplate = true
-        return image
     }
 
     private func requestLocation() {
