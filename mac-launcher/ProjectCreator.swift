@@ -19,29 +19,29 @@ final class ProjectCreator: NSObject, LauncherFeature {
         return [item]
     }
 
-    @objc private func create() {
+    @objc func create() {
         let folder = NSOpenPanel()
         folder.canChooseDirectories = true
         folder.canChooseFiles = false
         folder.canCreateDirectories = true
-        folder.prompt = "选择博客的父目录"
+        folder.prompt = L10n.text("选择博客的父目录")
         NSApp.activate(ignoringOtherApps: true)
         guard folder.runModal() == .OK, let parent = folder.url else { return }
 
         let alert = NSAlert()
-        alert.messageText = "新建 Hexo 博客"
-        alert.informativeText = "创建后会自动安装依赖并验证首页，需要网络连接。"
+        alert.messageText = L10n.text("新建 Hexo 博客")
+        alert.informativeText = L10n.text("创建后会自动安装依赖并验证首页，需要网络连接。")
         let name = NSTextField(string: "")
-        name.placeholderString = "文件夹名称，例如 my-blog"
+        name.placeholderString = L10n.text("文件夹名称，例如 my-blog")
         let title = NSTextField(string: "")
-        title.placeholderString = "网站名称，例如 My Blog"
+        title.placeholderString = L10n.text("网站名称，例如 My Blog")
         let stack = NSStackView(views: [name, title])
         stack.orientation = .vertical
         stack.spacing = 10
         stack.frame = NSRect(x: 0, y: 0, width: 360, height: 62)
         alert.accessoryView = stack
-        alert.addButton(withTitle: "创建博客")
-        alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: L10n.text("创建博客"))
+        alert.addButton(withTitle: L10n.text("取消"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         let value = name.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty, value != ".", value != "..", !value.contains("/"), !value.contains(":") else {
@@ -78,8 +78,8 @@ final class ProjectCreator: NSObject, LauncherFeature {
 
     private func show(_ text: String) {
         let alert = NSAlert()
-        alert.messageText = "Moonlit Desk"
-        alert.informativeText = text
+        alert.messageText = L10n.text("Moonlit Desk")
+        alert.informativeText = L10n.text(text)
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
     }

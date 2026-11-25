@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Moonlit 🌗 Desk · 编辑器</title><link rel="stylesheet" href="/style.css"><script defer src="/editor-moon.js"></script><script defer src="/vendor/purify.js"></script><script defer src="/vendor/turndown.js"></script><script defer src="/vendor/gfm.js"></script><script defer src="/rich-editor.js"></script><script defer src="/app.js"></script><script defer src="/settings-ui.js"></script></head>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Moonlit 🌗 Desk · 编辑器</title><link rel="stylesheet" href="/style.css"><script defer src="/ui-strings.js"></script><script defer src="/i18n.js"></script><script defer src="/editor-moon.js"></script><script defer src="/vendor/purify.js"></script><script defer src="/vendor/turndown.js"></script><script defer src="/vendor/gfm.js"></script><script defer src="/rich-editor.js"></script><script defer src="/app.js"></script><script defer src="/settings-ui.js"></script></head>
 <body>
 <aside>
   <header><a class="brand" id="blog-link" href="http://127.0.0.1:4000/" target="_blank" rel="noopener" aria-label="打开本地博客">Moonlit <span data-editor-moon aria-hidden="true">🌗</span> Desk</a><span id="site-name">文章编辑器</span></header>
-  <button id="new" class="primary">新建文章</button><button id="settings-button">网站设置</button>
+  <button id="new" class="primary">新建文章</button><button id="settings-button">设置</button>
   <input id="filter" type="search" placeholder="搜索文章与草稿" aria-label="搜索文章与草稿">
   <nav id="articles" aria-label="文章列表"></nav>
 </aside>
@@ -69,38 +69,5 @@
 
 <div class="dialog-actions"><button type="button" id="cancel-new">取消</button><button type="submit" class="primary">开始写作</button></div>
 </form>
-</dialog>
-<dialog id="settings-dialog">
-  <header class="dialog-heading"><h2>网站设置</h2><button id="close-settings" type="button">关闭</button></header>
-  <p id="settings-status" role="status"></p>
-  <details open><summary>网站信息</summary>
-    <form id="site-form" class="settings-form">
-      <label>网站名称<input name="title" required></label>
-      <label>副标题<input name="subtitle"></label>
-      <label>网站描述<input name="description"></label>
-      <label>网站关键词<input name="keywords" placeholder="多个关键词用逗号分隔"></label>
-      <button type="submit" class="primary">保存网站信息</button>
-    </form>
-  </details>
-  <details><summary>标签、分类和关键词</summary>
-    <div class="settings-form">
-      <label>管理类型<select id="taxonomy-kind"><option value="tags">标签</option><option value="categories">分类／归档分组</option><option value="keywords">关键词</option></select></label>
-      <label>已有名称<select id="taxonomy-existing"></select></label>
-      <label>新名称<input id="taxonomy-name"></label>
-      <div class="dialog-actions"><button data-taxonomy="add">新增</button><button data-taxonomy="rename">重命名</button><button data-taxonomy="remove">移除</button></div>
-      <p class="hint-text">重命名和移除会同步更新引用此项的文章，并先备份受影响的版本。日期归档由文章日期生成。</p>
-    </div>
-  </details>
-  <details><summary>GitHub 发布</summary>
-    <p id="github-account" class="hint-text"></p>
-    <form id="deployment-form" class="settings-form">
-      <label>目标仓库<input name="repository" required placeholder="owner/repository 或 GitHub 地址"></label>
-      <label>部署分支<input name="branch" value="gh-pages" required></label>
-      <label>网站地址<input name="siteUrl" type="url" placeholder="https://owner.github.io/repository/"></label>
-      <label class="checkbox-label"><input name="githubPages" type="checkbox">发布后配置 GitHub Pages</label>
-      <label>新仓库可见性<select name="visibility"><option value="public">公开</option><option value="private">私有</option></select></label>
-      <div class="dialog-actions"><button type="button" id="create-repository">创建这个 GitHub 仓库</button><button type="submit" class="primary">保存发布设置</button></div>
-    </form>
-  </details>
 </dialog>
 </body></html>

@@ -1,7 +1,10 @@
 # Native menu bar application
 
 From the project root, run npm ci and npm run build:mac.
-Open Moonlit Desk.app and choose a Hexo project using the menu.
+Open Moonlit Desk.app, right-click its icon, and connect a Hexo project in Settings → Blog & Folders.
+Left-click opens writing, server, and backup actions; right-click opens Settings, About, and Quit.
+SettingsWindow hosts the sidebar preferences in a bundled, local WKWebView.
+English is the default; the shared dictionary also provides Chinese.
 
 The app reads project settings from the user's Application Support directory.
 The editor and its JavaScript dependencies are bundled into the application

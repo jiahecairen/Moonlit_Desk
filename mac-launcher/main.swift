@@ -19,6 +19,9 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let defaults = UserDefaults.standard
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let menu = NSMenu()
+    private let contextMenu = NSMenu()
+    private var buildingMenu: NSMenu?
+    private var settingsWindow: SettingsWindow?
     private let log: URL
     private var server: Process?
     private var timer: Timer?
@@ -28,7 +31,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var features: [any LauncherFeature] = []
     private var serverNotice: String?
     private var backupError: String?
-    private let dateFormat = Date.FormatStyle(date: .abbreviated, time: .shortened)
+    private var dateFormat: Date.FormatStyle { Date.FormatStyle(date: .abbreviated, time: .shortened).locale(Locale(identifier: L10n.language == "zh" ? "zh_CN" : "en_IE")) }
     private let defaultInterval = 24
 
     init(studio: URL) {
@@ -69,14 +72,17 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         appearance = StatusAppearance(item: statusItem, studio: studio, project: { [weak self] in self?.project })
         appearance?.start()
-        menu.delegate = self
-        statusItem.menu = menu
+        menu.delegate = self; contextMenu.delegate = self
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(statusClicked)
+        statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.appearance?.refresh(); self?.runScheduledBackup() }
         }
         if project == nil {
-            DispatchQueue.main.async { self.chooseProject() }
+            DispatchQueue.main.async { self.showSettings(section: "blog") }
         } else { runScheduledBackup() }
+        if CommandLine.arguments.contains("--settings") { showSettings() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -94,11 +100,31 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return .terminateNow
     }
 
+    @objc private func statusClicked() {
+        guard let button = statusItem.button else { return }
+        let event = NSApp.currentEvent
+        let right = event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true
+        let selected = right ? contextMenu : menu
+        selected.popUp(positioning: nil, at: NSPoint(x: 0, y: -4), in: button)
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
+        buildingMenu = menu
+        defer { buildingMenu = nil }
         appearance?.refresh()
         menu.removeAllItems()
-        info(project?.lastPathComponent ?? "请选择 Hexo 博客目录")
-        add("选择博客目录…", #selector(chooseProject), enabled: !isBackingUp && !features.contains(where: { $0.isBusy }))
+        if menu === contextMenu {
+            add("设置…", #selector(openSettings), key: ",")
+            add("关于 Moonlit Desk", #selector(openAbout))
+            menu.addItem(.separator())
+            add("退出 Moonlit Desk", #selector(quit), key: "q")
+            return
+        }
+        info(project?.lastPathComponent ?? L10n.text("尚未选择博客"))
+        if let editor = editorFeature {
+            editor.menuItems().forEach { menu.addItem($0) }
+            add("新建文章", #selector(newArticle))
+        } else { info("请先在设置中连接博客") }
         menu.addItem(.separator())
         let occupied = HexoServer.portOccupied()
         let live = server?.isRunning == true
@@ -109,51 +135,95 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
         add("打开本地博客", #selector(openBlog), enabled: occupied)
         add("查看 Hexo 日志", #selector(openLog), enabled: FileManager.default.fileExists(atPath: log.path))
         menu.addItem(.separator())
-        if isBackingUp {
-            info("正在备份…")
-        } else if let error = backupError {
-            info("备份失败", tooltip: error)
-        }
-        if let last = defaults.object(forKey: "lastBackup") as? Date {
-            info("上次备份 · \(last.formatted(dateFormat))")
-        }
-        if let folder = destination {
-            info("备份位置 · \(folder.lastPathComponent)", tooltip: folder.path)
-        } else {
-            info("请选择备份位置")
-        }
+        if isBackingUp { info("正在备份…") }
+        else if let error = backupError { info("备份失败", tooltip: L10n.text(error)) }
+        if let last = defaults.object(forKey: "lastBackup") as? Date { info("上次备份 · " + last.formatted(dateFormat)) }
         add("立即备份", #selector(backupNow), enabled: project != nil && !isBackingUp && destination != nil)
-        add("选择备份位置…", #selector(chooseDestination), enabled: !isBackingUp)
-        add("打开备份目录", #selector(openDestination),
-            enabled: destination.map { FileManager.default.fileExists(atPath: $0.path) } ?? false)
-        let schedule = NSMenuItem(title: "备份频率", action: nil, keyEquivalent: "")
-        let options = NSMenu()
-        for (title, hours) in [("每天", 24), ("每周", 168), ("仅手动备份", 0)] {
-            let item = NSMenuItem(title: title, action: #selector(changeInterval(_:)), keyEquivalent: "")
-            item.target = self
-            item.tag = hours
-            item.state = hours == interval ? .on : .off
-            options.addItem(item)
-        }
-        schedule.submenu = options
-        menu.addItem(schedule)
-        for feature in features {
-            let items = feature.menuItems()
-            if !items.isEmpty {
-                menu.addItem(.separator())
-                items.forEach { menu.addItem($0) }
+        add("打开备份目录", #selector(openDestination), enabled: destination.map { FileManager.default.fileExists(atPath: $0.path) } ?? false)
+        menu.addItem(.separator())
+        add("在 Finder 中打开博客目录", #selector(openProject), enabled: project != nil)
+    }
+
+    private var editorFeature: EditorFeature? { features.compactMap { $0 as? EditorFeature }.first }
+    private var setupFeature: ProjectCreator? { features.compactMap { $0 as? ProjectCreator }.first }
+    private var busy: Bool { isBackingUp || features.contains(where: { $0.isBusy }) }
+
+    @objc private func newArticle() { editorFeature?.open(newArticle: true) }
+    @objc private func openSettings() { showSettings() }
+    @objc private func openAbout() { showSettings(section: "about") }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        if urls.contains(where: { $0.scheme == "moonlitdesk" && $0.host == "settings" }) { showSettings() }
+    }
+
+    private func showSettings(section: String = "general") {
+        if settingsWindow == nil {
+            settingsWindow = SettingsWindow(studio: studio) { [weak self] action, input in
+                guard let self else { return [:] }
+                return try await self.handleSettings(action, input)
             }
         }
-        menu.addItem(.separator())
-        let display = NSMenuItem(title: "月相与菜单栏显示…", action: #selector(StatusAppearance.showSettings), keyEquivalent: "")
-        display.target = appearance
-        menu.addItem(display)
-        add("在 Finder 中打开博客目录", #selector(openProject), enabled: project != nil)
+        settingsWindow?.open(section: section)
+    }
+
+    private func settingsState() -> [String: Any] {
+        var state = appearance?.preferences() ?? [:]
+        state["language"] = L10n.language
+        state["projectPath"] = project?.path ?? ""
+        state["backupFolder"] = destination?.path ?? ""
+        state["backupHours"] = interval
+        state["busy"] = busy
+        state["setupRunning"] = setupFeature?.isBusy == true
+        state["version"] = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.0"
+        state["build"] = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
         if #available(macOS 13.0, *) {
-            let login = add("登录时打开", #selector(toggleLogin))
-            login.state = SMAppService.mainApp.status == .enabled ? .on : .off
+            state["launchAtLogin"] = SMAppService.mainApp.status == .enabled || SMAppService.mainApp.status == .requiresApproval
+            state["loginNeedsApproval"] = SMAppService.mainApp.status == .requiresApproval
         }
-        add("退出 Moonlit Desk", #selector(quit), key: "q")
+        return state
+    }
+
+    private func handleSettings(_ action: String, _ input: [String: Any]) async throws -> Any {
+        switch action {
+        case "state": return settingsState()
+        case "save-general":
+            guard let language = input["language"] as? String, ["en", "zh"].contains(language) else { throw settingError("设置无效。") }
+            if #available(macOS 13.0, *), let enabled = input["launchAtLogin"] as? Bool {
+                let current = SMAppService.mainApp.status == .enabled || SMAppService.mainApp.status == .requiresApproval
+                if enabled != current {
+                    if enabled { try SMAppService.mainApp.register() }
+                    else { try await SMAppService.mainApp.unregister() }
+                }
+            }
+            var config = StudioSettings.load(); config["language"] = language; try StudioSettings.save(config)
+            settingsWindow?.window?.title = "Moonlit Desk — " + L10n.text("设置")
+            appearance?.refresh()
+        case "save-backups":
+            guard let hours = input["backupHours"] as? Int, [0, 24, 168].contains(hours) else { throw settingError("设置无效。") }
+            defaults.set(hours, forKey: "backupHours"); runScheduledBackup()
+        case "save-appearance": try appearance?.apply(input)
+        case "choose-project": guard !busy else { throw settingError("后台任务正在进行，请稍后再试。") }; chooseProject()
+        case "create-project": guard !busy else { throw settingError("后台任务正在进行，请稍后再试。") }; setupFeature?.create()
+        case "choose-backup": guard !busy else { throw settingError("后台任务正在进行，请稍后再试。") }; chooseDestination()
+        case "open-backup": openDestination()
+        case "open-project": openProject()
+        case "login-settings": if #available(macOS 13.0, *) { SMAppService.openSystemSettingsLoginItems() }
+        case "open-editor": editorFeature?.openEditor()
+        case "open-repository": NSWorkspace.shared.open(URL(string: "https://github.com/jiahecairen/Moonlit_Desk")!)
+        case "api":
+            guard let path = input["path"] as? String,
+                  ["api/settings", "api/site", "api/taxonomy", "api/deployment", "api/repository"].contains(path),
+                  let editor = editorFeature else { throw settingError("请先在设置中连接博客") }
+            let payload = input["payload"] as? [String: Any]
+            if !["api/settings", "api/taxonomy"].contains(path) && payload == nil { throw settingError("设置无效。") }
+            return try await editor.request(path: path, payload: payload)
+        default: throw settingError("设置无效。")
+        }
+        return settingsState()
+    }
+
+    private func settingError(_ message: String) -> NSError {
+        NSError(domain: "Settings", code: 1, userInfo: [NSLocalizedDescriptionKey: L10n.text(message)])
     }
 
     private func configureFeatures() {
@@ -169,19 +239,19 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @discardableResult
     private func add(_ title: String, _ action: Selector, enabled: Bool = true, key: String = "") -> NSMenuItem {
-        menu.autoenablesItems = false
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        (buildingMenu ?? menu).autoenablesItems = false
+        let item = NSMenuItem(title: L10n.text(title), action: action, keyEquivalent: key)
         item.target = self
         item.isEnabled = enabled
-        menu.addItem(item)
+        (buildingMenu ?? menu).addItem(item)
         return item
     }
 
     private func info(_ title: String, tooltip: String? = nil) {
-        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        let item = NSMenuItem(title: L10n.text(title), action: nil, keyEquivalent: "")
         item.isEnabled = false
         item.toolTip = tooltip
-        menu.addItem(item)
+        (buildingMenu ?? menu).addItem(item)
     }
 
     @objc private func chooseProject() {
@@ -189,7 +259,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        panel.prompt = "选择 Hexo 博客"
+        panel.prompt = L10n.text("选择 Hexo 博客")
         panel.directoryURL = project
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let folder = panel.url else { return }
@@ -253,26 +323,12 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     @objc private func quit() { NSApp.terminate(nil) }
 
-    @objc private func toggleLogin() {
-        guard #available(macOS 13.0, *) else { return }
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-                if SMAppService.mainApp.status == .requiresApproval {
-                    SMAppService.openSystemSettingsLoginItems()
-                }
-            }
-        } catch { showError(error.localizedDescription) }
-    }
-
     @objc private func chooseDestination() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "选为备份位置"
+        panel.prompt = L10n.text("选为备份位置")
         panel.directoryURL = destination?.deletingLastPathComponent()
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let folder = panel.url else { return }
@@ -284,11 +340,6 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defaults.removeObject(forKey: "lastBackup")
         nextRetry = .distantPast
         backupError = nil
-        runScheduledBackup()
-    }
-
-    @objc private func changeInterval(_ item: NSMenuItem) {
-        defaults.set(item.tag, forKey: "backupHours")
         runScheduledBackup()
     }
 
@@ -326,7 +377,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func showError(_ message: String) {
         let alert = NSAlert()
         alert.messageText = "Moonlit Desk"
-        alert.informativeText = message
+        alert.informativeText = L10n.text(message)
         alert.alertStyle = .warning
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()

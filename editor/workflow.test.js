@@ -54,8 +54,10 @@ test('save, version deduplication, image backups and Git publication', async t =
   assert.equal(backupArticle(project, '_posts/test.md', text).path, first.path);
   assert.equal(fs.readdirSync(path.dirname(first.path)).length, 2);
 
+  const preferences = path.join(work, 'settings.json');
+  fs.writeFileSync(preferences, JSON.stringify({ language: 'en' }));
   server = spawn(process.execPath, [path.join(__dirname, 'server.js')], {
-    env: { ...process.env, MOONLIT_PROJECT: project, EDITOR_PORT: '4512' }, stdio: 'ignore'
+    env: { ...process.env, MOONLIT_PROJECT: project, MOONLIT_SETTINGS: preferences, EDITOR_PORT: '4512' }, stdio: 'ignore'
   });
   const base = 'http://127.0.0.1:4512';
   let token;
@@ -64,6 +66,11 @@ test('save, version deduplication, image backups and Git publication', async t =
     catch { await new Promise(resolve => setTimeout(resolve, 50)); }
   }
   assert(token, 'editor started');
+  assert.equal((await (await fetch(base + '/api/preferences')).json()).language, 'en');
+  fs.writeFileSync(preferences, JSON.stringify({ language: 'zh' }));
+  assert.equal((await (await fetch(base + '/api/preferences')).json()).language, 'zh');
+  assert.equal((await (await fetch(base + '/api/session')).json()).language, 'zh');
+  fs.writeFileSync(preferences, JSON.stringify({ language: 'en' }));
   const headers = { Origin: base, 'X-Editor-Token': token, 'Content-Type': 'application/json' };
   const get = async () => (await fetch(base + '/api/article?path=_posts/test.md')).json();
   const post = async (endpoint, body) => fetch(base + endpoint, { method: 'POST', headers, body: JSON.stringify(body) });

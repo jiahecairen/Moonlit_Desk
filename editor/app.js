@@ -22,17 +22,17 @@ function askText(label, value = '') {
     const form = document.createElement('form');
     form.method = 'dialog';
     const field = document.createElement('label');
-    field.textContent = label;
+    field.textContent = MoonlitI18n.t(label);
     const input = document.createElement('input');
-    input.value = value;
+    input.value = MoonlitI18n.t(value);
     field.append(input);
     const actions = document.createElement('div');
     actions.className = 'dialog-actions';
     const cancel = document.createElement('button');
-    cancel.type = 'button'; cancel.textContent = '取消';
+    cancel.type = 'button'; cancel.textContent = MoonlitI18n.t('取消');
     cancel.onclick = () => dialog.close();
     const submit = document.createElement('button');
-    submit.type = 'submit'; submit.textContent = '确定'; submit.value = 'ok';
+    submit.type = 'submit'; submit.textContent = MoonlitI18n.t('确定'); submit.value = 'ok';
     actions.append(cancel, submit);
     form.append(field, actions); dialog.append(form); document.body.append(dialog);
     dialog.addEventListener('close', () => {
@@ -47,11 +47,11 @@ function askConfirm(text) {
   return new Promise(resolve => {
     const dialog = document.createElement('dialog');
     const form = document.createElement('form'); form.method = 'dialog';
-    const content = document.createElement('p'); content.textContent = text;
+    const content = document.createElement('p'); content.textContent = MoonlitI18n.t(text);
     content.style.whiteSpace = 'pre-wrap';
     const actions = document.createElement('div'); actions.className = 'dialog-actions';
     for (const [label, value] of [['取消','cancel'], ['确定','ok']]) {
-      const button = document.createElement('button'); button.textContent = label;
+      const button = document.createElement('button'); button.textContent = MoonlitI18n.t(label);
       button.value = value; button.type = 'submit'; actions.append(button);
     }
     form.append(content, actions); dialog.append(form); document.body.append(dialog);
@@ -95,7 +95,7 @@ function renderList() {
     button.classList.toggle('active', article.path === currentPath);
     button.textContent = article.titleZh || article.title;
     const detail = document.createElement('small');
-    detail.textContent = (article.draft ? '草稿 · ' : article.hidden ? '隐藏文章 · ' : '') + article.date.slice(0, 10);
+    detail.textContent = (article.draft ? MoonlitI18n.t('草稿 · ') : article.hidden ? MoonlitI18n.t('隐藏文章 · ') : '') + article.date.slice(0, 10);
     button.append(detail);
     button.addEventListener('click', () => openArticle(article));
     list.append(button);
@@ -174,7 +174,7 @@ function setMode(markdown) {
   $('#workspace').classList.toggle('rich-mode', !markdown);
   $('#md-button').setAttribute('aria-pressed', String(markdown));
   $('#md-button').textContent = markdown ? '富文本编辑器' : 'MD 编辑器';
-  $('#md-button').title = markdown ? '切换回富文本写作' : '查看与编辑 Markdown 源码';
+  $('#md-button').title = MoonlitI18n.t(markdown ? '切换回富文本写作' : '查看与编辑 Markdown 源码');
   rich.setEditable(!markdown && richReady && !publishing);
   updateToolbar();
 }
@@ -377,12 +377,12 @@ $('#advanced-button').addEventListener('click', () => {
 });
 $('#inline-code').addEventListener('click', () => {
   if (!richMode || !richReady || publishing) return;
-  const text = rich.selectedText() || '代码';
+  const text = rich.selectedText() || MoonlitI18n.t('代码');
   rich.insertHTML('<code>' + rich.escape(text) + '</code>&nbsp;');
 });
 $('#code-block').addEventListener('click', () => {
   if (!richMode || !richReady || publishing) return;
-  const text = rich.selectedText() || '在这里输入代码';
+  const text = rich.selectedText() || MoonlitI18n.t('在这里输入代码');
   rich.insertHTML('<pre><code>' + rich.escape(text) + '</code></pre><p><br></p>');
 });
 $('#insert-table').addEventListener('click', async () => {
@@ -537,10 +537,16 @@ document.addEventListener('keydown', event => {
 window.addEventListener('beforeunload', event => {
   if (dirty() || uploading || saving) { event.preventDefault(); event.returnValue = ''; }
 });
+window.addEventListener('moonlit-language', () => {
+  if (!currentPath) { $('#heading').textContent = MoonlitI18n.t('开始写作'); $('#paper-title').textContent = MoonlitI18n.t('开始写作'); $('#file-path').textContent = MoonlitI18n.t('选择一篇文章，或新建一篇'); }
+  renderList();
+});
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const session = await api('/api/session');
     token = session.token;
+    MoonlitI18n.setLanguage(session.language);
+    for (const id of ['heading','paper-title','file-path']) $('#' + id).textContent = MoonlitI18n.t($('#' + id).textContent);
     $('#site-name').textContent = session.siteTitle;
     taxonomyCatalog = await api('/api/taxonomy');
     $('#blog-link').title = session.siteTitle;
@@ -548,5 +554,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     await refreshList();
     message('已连接 · 保存时自动备份');
     await pollPublish();
+    if (new URLSearchParams(location.search).has('new')) $('#new').click();
+    async function syncPreferences() {
+      try {
+        const prefs = await api('/api/preferences');
+        if (prefs.language !== MoonlitI18n.language) MoonlitI18n.setLanguage(prefs.language);
+      } catch {}
+    }
+    setInterval(syncPreferences, 2500);
+    window.addEventListener('focus', syncPreferences);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) syncPreferences(); });
+
   } catch (error) { message(error.message, true); }
 });

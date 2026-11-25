@@ -79,7 +79,8 @@ final class StatusAppearance: NSObject {
         if customMode { button.imagePosition = .noImage }
         let description = position.map { String(format: "%.2f°, %.2f° · %@", $0.latitude, $0.longitude, $0.label) } ?? "未取得估算位置 · 标准月相朝向"
         button.toolTip = "\(lunar.name) · 照明 \(Int((lunar.fraction * 100).rounded()))%\n\(description)\n\(locationNotice)\n按当前时间计算，白天及地平线下也显示"
-        button.setAccessibilityLabel("\(lunar.name)，照明 \(Int((lunar.fraction * 100).rounded()))%，\(name.isEmpty ? "博客工具" : name)")
+        button.toolTip = button.toolTip.map { L10n.text($0) }
+        button.setAccessibilityLabel(L10n.text("\(lunar.name)，照明 \(Int((lunar.fraction * 100).rounded()))%，\(name.isEmpty ? "博客工具" : name)"))
         refreshIPIfNeeded()
     }
 
@@ -151,57 +152,36 @@ final class StatusAppearance: NSObject {
         }
     }
 
-    @objc func showSettings() {
-        let alert = NSAlert()
-        alert.messageText = "月相与菜单栏显示"
-        alert.informativeText = "月相按当前时间计算；位置决定月面的朝向，白天也会显示。默认根据系统时区估算，不联网、不请求定位权限。可选 IP 定位或手动经纬度。"
-        let name = NSPopUpButton(), icon = NSPopUpButton()
-        name.addItems(withTitles: ["不显示名称（默认）", "Moonlit Desk", "当前网站名称"])
-        name.selectItem(at: ["none", "app", "site"].firstIndex(of: defaults.string(forKey: "menuNameMode") ?? "none") ?? 0)
-        icon.addItems(withTitles: ["实时月相图标（默认）", "自定义图标／表情"])
-        icon.selectItem(at: defaults.string(forKey: "menuIconMode") == "custom" ? 1 : 0)
-        let symbol = NSTextField(string: defaults.string(forKey: "menuCustomIcon") ?? "✦")
-        let mode = NSPopUpButton()
-        mode.addItems(withTitles: ["系统时区估算（默认，无弹窗、不联网）", "IP 城市定位（无弹窗，需要联网）", "手动填写经纬度（无弹窗、不联网）"])
-        mode.selectItem(at: ["timezone", "ip", "manual"].firstIndex(of: locationMode) ?? 0)
-        let latitude = NSTextField(string: defaults.object(forKey: "moonManualLatitude") != nil ? String(defaults.double(forKey: "moonManualLatitude")) : "")
-        let longitude = NSTextField(string: defaults.object(forKey: "moonManualLongitude") != nil ? String(defaults.double(forKey: "moonManualLongitude")) : "")
-        latitude.placeholderString = "-90 至 90，如 53.35"
-        longitude.placeholderString = "-180 至 180，如 -6.26"
-        let stack = NSStackView()
-        stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 8
-        stack.frame = NSRect(x: 0, y: 0, width: 390, height: 365)
-        for view in [NSTextField(labelWithString: "名称"), name, NSTextField(labelWithString: "图标"), icon,
-                     symbol, NSTextField(labelWithString: "位置来源"), mode, NSTextField(labelWithString: "纬度（仅手动模式使用）"), latitude,
-                     NSTextField(labelWithString: "经度"), longitude] {
-            stack.addArrangedSubview(view)
-            view.widthAnchor.constraint(equalToConstant: 390).isActive = true
+    func preferences() -> [String: Any] {
+        ["menuNameMode": defaults.string(forKey: "menuNameMode") ?? "none",
+         "menuIconMode": defaults.string(forKey: "menuIconMode") ?? "moon",
+         "menuCustomIcon": defaults.string(forKey: "menuCustomIcon") ?? "✦",
+         "moonLocationMode": locationMode,
+         "latitude": defaults.object(forKey: "moonManualLatitude") ?? "",
+         "longitude": defaults.object(forKey: "moonManualLongitude") ?? ""]
+    }
+
+    func apply(_ input: [String: Any]) throws {
+        guard let name = input["menuNameMode"] as? String, ["none", "app", "site"].contains(name),
+              let icon = input["menuIconMode"] as? String, ["moon", "custom"].contains(icon),
+              let mode = input["moonLocationMode"] as? String, ["timezone", "ip", "manual"].contains(mode) else {
+            throw NSError(domain: "Settings", code: 1, userInfo: [NSLocalizedDescriptionKey: "设置无效。"])
         }
-        let note = NSTextField(wrappingLabelWithString: "IP 模式会访问 ipapi.co，让服务商看到出口 IP；不发送文章、网站配置或 GPS 坐标。时区位置是代表城市，并非当前位置。")
-        note.font = .systemFont(ofSize: 11); note.textColor = .secondaryLabelColor
-        note.widthAnchor.constraint(equalToConstant: 390).isActive = true
-        stack.addArrangedSubview(note)
-        alert.accessoryView = stack
-        alert.addButton(withTitle: "保存"); alert.addButton(withTitle: "取消")
-        NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        if mode.indexOfSelectedItem == 2 {
-            guard let lat = Double(latitude.stringValue), let lng = Double(longitude.stringValue),
-                  lat.isFinite, lng.isFinite, abs(lat) <= 90, abs(lng) <= 180 else {
-                let error = NSAlert(); error.messageText = "请填写有效的纬度和经度"; error.runModal(); return
+        if mode == "manual" {
+            guard let lat = Double(String(describing: input["latitude"] ?? "")),
+                  let lon = Double(String(describing: input["longitude"] ?? "")),
+                  MoonLocation.valid(latitude: lat, longitude: lon, label: "") != nil else {
+                throw NSError(domain: "Settings", code: 1, userInfo: [NSLocalizedDescriptionKey: "请填写有效的纬度和经度"])
             }
-            defaults.set(lat, forKey: "moonManualLatitude"); defaults.set(lng, forKey: "moonManualLongitude")
+            defaults.set(lat, forKey: "moonManualLatitude"); defaults.set(lon, forKey: "moonManualLongitude")
         }
-        let value = symbol.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        defaults.set(["none", "app", "site"][name.indexOfSelectedItem], forKey: "menuNameMode")
-        defaults.set(icon.indexOfSelectedItem == 1 ? "custom" : "moon", forKey: "menuIconMode")
+        defaults.set(name, forKey: "menuNameMode")
+        defaults.set(icon, forKey: "menuIconMode")
+        let value = (input["menuCustomIcon"] as? String ?? "✦").trimmingCharacters(in: .whitespacesAndNewlines)
         defaults.set(value.isEmpty ? "✦" : String(value.prefix(2)), forKey: "menuCustomIcon")
-        ipGeneration += 1
-        ipTask?.cancel()
-        ipTask = nil
-        defaults.set(["timezone", "ip", "manual"][mode.indexOfSelectedItem], forKey: "moonLocationMode")
-        locationNotice = ""
-        lastIPAttempt = .distantPast
+        ipGeneration += 1; ipTask?.cancel(); ipTask = nil
+        defaults.set(mode, forKey: "moonLocationMode")
+        locationNotice = ""; lastIPAttempt = .distantPast
         refresh()
     }
 }

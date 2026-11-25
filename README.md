@@ -49,8 +49,8 @@ npm run build:mac
 open "Moonlit Desk.app"
 ~~~
 
-On first launch, choose your Hexo project. You can change it later using
-**选择博客目录…**. Use **新建 Hexo 博客…** to choose a parent folder and create
+On first launch, open **Settings → Blog & Folders** and choose your Hexo project.
+Use **Create a Hexo Blog…** in the same section to choose a parent folder and create
 a new site. Creation installs Hexo and verifies a successful build before connecting
 the site; Node.js 20.19 or newer and network access are required. The app includes the editor runtime and reads the selected
 project from local settings. Rebuilding is unnecessary when changing blogs.
@@ -59,9 +59,23 @@ The menu supports starting and stopping Hexo, opening the editor, manual or
 scheduled whole-project backups, and launching at login. The local Hexo preview
 uses port 4000 and the editor uses port 4510.
 
+## Settings and language
+
+Moonlit Desk defaults to English. Right-click (or Control-click) the menu bar icon
+and choose **Settings…**. A single sidebar window contains General, Blog & Folders,
+Backups, Moon & Appearance, Website, Tags & Categories, GitHub Publishing, and About.
+Choose **简体中文** in General to use Chinese; the menu bar and open editors follow
+the saved language. Article text, titles, and taxonomy names are not translated.
+
+Left-click the icon for writing actions: open the editor, new article, start/stop
+Hexo, open the blog, back up now, and open folders or logs. Configuration controls
+have moved to Settings. The editor's Settings button opens the same native window
+via `moonlitdesk://settings`; this requires the built macOS app to be registered.
+Node-only editing still works, but this unified settings window is macOS-specific.
+
 ## Menu bar appearance and moon phase
 
-The menu bar shows only a live moon icon by default. **月相与菜单栏显示…** lets
+The menu bar shows only a live moon icon by default. **Settings → Moon & Appearance** lets
 you add the app name or the current site's name, or replace the moon with a custom
 symbol. Changes persist across launches; site names follow `_config.yml` changes.
 
@@ -94,7 +108,7 @@ optional section with your own heading. It opens while editing and stays collaps
 on the published page until a reader clicks its heading. Existing sections are preserved.
 
 Expand **文章属性** to edit titles and date, select tags and categories, and add
-keywords. **网站设置** manages the site name, description, keywords, and shared
+keywords. **Settings → Website / Tags & Categories** manages the site name, description, keywords, and shared
 tags/categories/keywords. Renaming or removing a shared entry updates matching
 articles after backing up their previous and new versions.
 
@@ -125,13 +139,13 @@ Local settings live outside this repository:
 ~/Library/Application Support/Moonlit Desk/settings.json
 ~~~
 
-Supported keys include projectPath and backupFolder; bilingual is a legacy key. CLI environment
+Supported keys include projectPath, backupFolder, and language (en/zh; default en); bilingual is a legacy key. CLI environment
 overrides include MOONLIT_PROJECT, MOONLIT_ARTICLE_BACKUPS, MOONLIT_SETTINGS,
 and EDITOR_PORT.
 
 ## GitHub publishing
 
-Open **网站设置 → GitHub 发布** to set a repository, branch, and public site URL.
+Open **Settings → GitHub Publishing** to set a repository, branch, and public site URL.
 You can create a public or private repository there after logging in with
 `gh auth login`. Optionally enable GitHub Pages from the deployment branch.
 Use the full site URL, including the repository path for GitHub Pages project sites.

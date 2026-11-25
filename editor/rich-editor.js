@@ -59,7 +59,7 @@ class RichDocument {
       this.rawBlocks.set(key, block.outerHTML);
       const placeholder = inert.createElement('div');
       placeholder.setAttribute('data-rich-raw', key);
-      placeholder.textContent = '嵌入内容 · 可在 MD 编辑器中修改';
+      placeholder.textContent = MoonlitI18n.t('嵌入内容 · 可在 MD 编辑器中修改');
       block.replaceWith(placeholder);
     }
     this.element.innerHTML = DOMPurify.sanitize(inert.body.innerHTML, {
@@ -142,7 +142,7 @@ class RichDocument {
   }
 
   insertTable(rows, columns) {
-    const header = '<tr>' + '<th>标题</th>'.repeat(columns) + '</tr>';
+    const header = '<tr>' + ('<th>' + MoonlitI18n.t('标题') + '</th>').repeat(columns) + '</tr>';
     const row = '<tr>' + '<td><br></td>'.repeat(columns) + '</tr>';
     this.insertHTML('<table><thead>' + header + '</thead><tbody>' + row.repeat(rows) + '</tbody></table><p><br></p>');
   }

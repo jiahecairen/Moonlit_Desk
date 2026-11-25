@@ -1,8 +1,22 @@
 # Moonlit Desk 开发交接文档
 
-交接日期：2026-11-25。
+交接日期：2026-11-25；当前版本 1.2.0，build 4。
 
 本文用于让另一位开发者或 AI 在没有聊天记录的情况下继续维护。完整原理、API 和路径字典见 [项目说明](PROJECT_GUIDE.zh-CN.md)；可复制的任务提示词见 [开发提示词](DEVELOPER_PROMPT.zh-CN.md)。
+
+## 最新交付：双语与统一设置
+
+默认英文，支持中文；语言在 Application Support/settings.json 的 language 键中保存。**左键**菜单为写作／服务／备份操作，**右键**为 Settings、About、Quit。不要重新把配置子菜单混入左键菜单。
+
+统一设置窗口是 SettingsWindow.swift + 本地 WKWebView，页面在 editor/preferences.*。八个分区：General、Blog & Folders、Backups、Moon & Appearance、Website、Tags & Categories、GitHub Publishing、About。原生偏好、博客目录、创建博客、备份目标／频率、登录项、网站与部署设置全部归入此窗口。
+
+浏览器 Settings 按钮走 moonlitdesk://settings，要求应用已注册 URL scheme。旧 settings-dialog HTML 与站点设置 JS 已移除，settings-ui.js 只留文章属性和入口。文章属性不属于全局配置，仍在编辑页面。
+
+重点：本地设置页面不能被远程 HTML 替代；桥只接受指定本地文件的主 frame，API 路径有白名单；EditorFeature.request 确认项目与 token/Origin 后才请求博客接口。不能把一个通用 shell／任意 URL 执行器暴露到 WKWebView。
+
+已实际检查英文默认设置、中文切换、切回英文保存、Website 现有字段加载和 About；语言只改 UI，不改用户正文。曾发现只切语言也注销登录项的错误，现已修成仅在状态变化时调用系统服务。系统登录项实际开启／关闭仍受 macOS 许可影响，不用来回切换测试用户真实自启动偏好。
+
+语言文件为 ui-strings.json（Swift 读取）与 ui-strings.js（浏览器读取），内容必须一致；i18n.js 负责 UI，勿对整个用户文章 DOM 运行通用翻译器。Node 增加只读 /api/preferences，编辑器轮询并在重新聚焦时更新。
 
 ## 1. 接手时最重要的事实
 
@@ -89,7 +103,7 @@ git diff --check
 
 截至本次交付，执行了：
 
-- Node 测试两组，覆盖多条断言；全部通过。
+- Node 测试三组，覆盖多条断言；全部通过。
 - Swift 月相参考数据测试，通过。
 - Swift 位置解析、未知时区、南北半球、IP 响应校验测试，通过。
 - 原生应用重新编译、临时签名与资源打包，成功。
@@ -175,7 +189,7 @@ git diff --check
 - 成熟富文本编辑器是否替换 contenteditable，需要迁移试验而非直接重写。
 - 可配置端口与多站点集合。
 - 自动保存／本地 crash recovery。
-- 正式图标、国际化、版本号统一、签名公证、DMG、自动更新。
+- 更多语言、版本号统一、签名公证、DMG、自动更新。
 - CI：Node 在隔离 runner，Swift 在 macOS runner，避免测试访问个人数据。
 - 升级旧依赖，先兼容测试而非一键全量 npm update。
 

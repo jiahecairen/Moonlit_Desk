@@ -1,8 +1,19 @@
 # Moonlit Desk 完整项目说明
 
-维护日期：2026-11-25。本文说明的是当前仓库实现，不把未来规划写成已有功能。
+维护日期：2026-11-25；当前版本 1.2.0（build 4）。本文说明的是当前仓库实现，不把未来规划写成已有功能。
 
 阅读入口：[交接文档](HANDOFF.zh-CN.md) · [开发提示词](DEVELOPER_PROMPT.zh-CN.md) · [英文 README](../README.md)。
+
+## 最新界面入口：统一设置与双语
+
+应用默认英文，保存 `language=zh` 后切换简体中文。原生菜单、设置窗口、编辑器按钮和常见提示共用翻译词典；文章文本、标题、标签名称不自动翻译。
+
+- **左键单击菜单栏图标**：打开编辑器、新建文章、启动／停止 Hexo、打开博客、立即备份、打开备份／博客目录、查看日志。
+- **右键单击／Control-click**：Settings…、About Moonlit Desk、Quit。
+- **设置窗口**采用原生 NSWindow + 本地 WKWebView，具有通用、博客与目录、备份、月相与显示、网站信息、标签与分类、GitHub 发布、关于八个侧边栏分区。
+- 所有长期配置均进入此窗口；编辑器只保留文章本身的属性面板。编辑器 Settings 按钮通过 `moonlitdesk://settings` 打开同一窗口，不再弹旧网站设置对话框。
+- 首次未连接博客时打开设置的博客分区；选择目录、创建站点和备份目标的文件选择框仍由用户点击触发。
+- 只运行 Node 但未安装注册 macOS 应用时，仍可编辑文章；统一原生设置入口不可用，必要时通过博客配置文件／configure CLI 配置。
 
 ## 1. 产品定位与边界
 
@@ -89,7 +100,7 @@ npm start -- --project /absolute/path/to/hexo-blog
 
 ### 4.1 接入已有博客
 
-1. 菜单选择包含 `_config.yml` 与 `package.json` 的博客目录。
+1. 右键菜单栏打开设置，在 Blog & Folders 中选择包含 `_config.yml` 与 `package.json` 的博客目录。
 2. 博客需自行安装其 `node_modules`，并具有可用的 Hexo 服务命令。
 3. 选择“启动 Hexo”，再打开本地博客。
 4. 选择“打开文章编辑器”。如果 4510 已有匹配项目的编辑器，会直接复用。
@@ -97,7 +108,7 @@ npm start -- --project /absolute/path/to/hexo-blog
 
 ### 4.2 新建 Hexo
 
-1. 菜单选择“新建 Hexo 博客…”。
+1. 设置 → Blog & Folders，点击 Create a Hexo Blog…。
 2. 选择父目录，填写一个尚不存在的文件夹名称及网站名。
 3. 后端在父目录的 `.moonlit-create-<UUID>` 中创建官方 CLI 自带模板。
 4. 使用 `--no-clone --no-install` 生成文件，避免依赖 Git 克隆模板。
@@ -117,7 +128,7 @@ npm start -- --project /absolute/path/to/hexo-blog
 
 ### 4.4 添加折叠内容
 
-点击“高级 → 折叠内容”，输入自己的标题，再在展开的区域里写内容。生成结构如下：
+点击“Advanced → Folded Content”（中文为“高级 → 折叠内容”），输入自己的标题，再在展开的区域里写内容。生成结构如下：
 
 ```html
 <details>
@@ -133,7 +144,7 @@ npm start -- --project /absolute/path/to/hexo-blog
 ### 4.5 GitHub 发布
 
 1. 用户在终端完成 `gh auth login`。
-2. 网站设置填写目标 `owner/repository` 或 GitHub URL。
+2. Settings → GitHub Publishing 填写目标 `owner/repository` 或 GitHub URL。
 3. 指定部署分支，建议专用分支如 `gh-pages`。
 4. 填写网站公开 URL。项目 Pages URL 应含 `/repository/` 路径。
 5. 如需要，可以创建仓库并保存目标配置。
@@ -147,7 +158,7 @@ npm start -- --project /absolute/path/to/hexo-blog
 
 ### 5.1 当前默认行为
 
-默认 `moonLocationMode=timezone`。不调用 CoreLocation，不请求 GPS，不进行 IP 查询，不使用 Wi-Fi 扫描 API。应用的 Info.plist 已去掉定位权限说明键。
+Settings → Moon & Appearance 可配置位置来源，默认 `moonLocationMode=timezone`。不调用 CoreLocation，不请求 GPS，不进行 IP 查询，不使用 Wi-Fi 扫描 API。应用的 Info.plist 已去掉定位权限说明键。
 
 读取系统时区后，查本机 `/usr/share/zoneinfo/zone.tab` 的代表城市坐标；系统表不可读时使用应用自带 IANA 公有领域表。例：Europe/Dublin 映射为时区代表城市，而非用户真实当前位置。
 
@@ -206,7 +217,9 @@ flowchart LR
 | `Services.swift` | BackupService、HexoServer、StudioSettings |
 | `EditorFeature.swift` | 检查编辑器 session 的项目路径，启动并轮询就绪，打开浏览器 |
 | `ProjectCreator.swift` | 选择父目录、输入新站点信息、启动创建脚本、完成后连接 |
-| `StatusAppearance.swift` | 显示偏好、旧设置迁移、选择位置来源、IP 缓存、异步读取站点名称 |
+| `StatusAppearance.swift` | 显示偏好、旧设置迁移、位置来源、IP 缓存、异步站点名称；提供 preferences/apply，不再自己弹设置框 |
+| `SettingsWindow.swift` | 单例设置窗口、WKWebView、本地文件导航限制、消息桥、侧边栏分区打开 |
+| `Localization.swift` | Swift 界面语言，读取共享 JSON 词典 |
 | `MoonLocation.swift` | 坐标校验、IANA ISO6709 坐标解析、时区匹配、IP JSON 校验 |
 | `LunarPhase.swift` | 不依赖 UI 的月相与方向计算 |
 | `MoonIcon.swift` | 网站同款彩色 emoji，禁止模板染色 |
@@ -240,11 +253,27 @@ flowchart LR
 | `index.html` | 布局、常用／高级工具、文章属性、对话框 |
 | `style.css` | 编辑器配色、纸张区、工具栏和响应式 |
 | `app.js` | 当前文档状态、载入／保存／发布、模式切换、图片与工具栏 |
-| `settings-ui.js` | 文章属性队列、全站词条管理、站点和 GitHub 表单 |
+| `settings-ui.js` | 文章属性队列与目录选项；Settings 按钮打开原生统一设置 |
+| `preferences.html/.css/.js` | 八分区设置页面，使用受限原生消息桥访问偏好和网站配置 |
+| `i18n.js`、`ui-strings.json/.js` | UI 翻译与共享词典；不遍历文章正文作翻译 |
 | `rich-editor.js` | RichDocument、HTML 清理、Markdown 序列化、光标、表格及折叠 |
 | `editor-moon.js` | 编辑器标题和标签的表情循环 |
 
 脚本使用传统 defer 全局作用域，`settings-ui.js` 共享 app.js 的状态；启动入口绑定 DOMContentLoaded，确保依赖脚本都执行。它们不是 ES Modules，不可任意交换加载顺序。
+
+### 6.4 统一设置的原生桥
+
+settings HTML/JS 加载自 app 的 Resources/editor，不能作为公网设置服务使用。`SettingsWindow` 仅接收主 frame 且 URL 精确匹配 preferences.html 的消息；导航限制在资源目录本地文件。
+
+调用格式为 `{id, action, input}`，经 `window.webkit.messageHandlers.settings.postMessage` 送到 Swift，再以 `window.settingsResponse({id,data})` 或 `{id,error}` 返回。页面为请求设置 200 秒超时；所有用户输入经 JSON 序列化回传，不拼接可执行脚本内容。
+
+支持的 action：state、save-general、save-backups、save-appearance、choose-project、create-project、choose-backup、open-backup、open-project、login-settings、open-editor、open-repository，以及 api。
+
+api 只允许 api/settings、api/site、api/taxonomy、api/deployment、api/repository。`EditorFeature` 确认匹配当前项目的服务已启动，读取 token，再以正确 Origin 调本地接口。不允许通过桥任意访问路径／执行 shell。没有项目时，网站相关设置显示先连接博客的提示。
+
+通用设置的登录项只在 checkbox 与实际状态不一致时才调用 ServiceManagement；单独切换语言不应产生注册／注销操作。语言保存后更新窗口标题与菜单；编辑器每 2.5 秒，以及窗口 focus / visibilitychange 时读取 /api/preferences。
+
+JSON 是主词典，ui-strings.js 是浏览器用的同内容副本，测试检查两者一致。编辑器初始静态 UI 文本记录原文，语言切换仅更新 UI 节点、属性和特定状态节点，排除文章正文、文章列表用户标题等内容。
 
 ## 7. 本地数据与配置字典
 
@@ -264,6 +293,7 @@ flowchart LR
 | projectPath | 当前 Hexo 根目录，必须存在两个配置文件 |
 | backupFolder | 整站备份目标；文章备份在其下按站点隔离 |
 | articleBackupPath | 兼容旧版本，且项目匹配时使用的直接文章目标；切换项目／目标时清除 |
+| language | en 默认、zh；由设置通用分区保存，编辑器通过只读 API 同步 |
 | bilingual | 遗留兼容键，session 返回；不再决定新文章插入翻译区 |
 
 Swift 保存 JSON 为原子写，权限 0600；CLI configure 使用临时文件 rename。不要将该 JSON 提交到工具仓库。
@@ -335,6 +365,7 @@ GET 接口也只接受正确 Host。所有非 GET 请求需要 `Origin: http://1
 | POST /api/article-name | title、chinese、slug | title、titleZh、slug；不创建文件 |
 | POST /api/preview | text | title、html、frontMatter、warning、metadata |
 | POST /api/image | 原始图片字节 | 201、url；不使用 multipart |
+| GET /api/preferences | 无 | 当前界面 language；只读 |
 | GET /api/settings | 无 | site、deployment、taxonomy、account |
 | GET /api/taxonomy | 无 | tags / categories / keywords 数组 |
 | POST /api/metadata | text、patch | frontMatter、metadata；只转换文本，不落盘 |
@@ -413,7 +444,7 @@ OneDrive 由其客户端负责远程上传，工具只确认本地写入成功�
 1. 创建临时 .app 目录。
 2. 打包 editor 与当前全部 node_modules；复制第三方声明与 zone.tab。
 3. swiftc -swift-version 5 -O 编译本机架构。
-4. 写 org.moonlitdesk.app、LSUIElement 等 plist；目前版本号 1.1，build 3，npm 版本 1.0.0，尚未统一。
+4. 写 org.moonlitdesk.app、LSUIElement 等 plist；当前 App 与 npm 版本均为 1.2.0，App build 为 4。
 5. ad-hoc codesign，ditto 到目标目录。
 
 可传目标目录：`./mac-launcher/build.sh /absolute/output`。当前不是 Universal Binary、DMG 安装器或已公证发行版。Node/npm/git/gh 仍依赖系统环境；Finder 启动应用不会自动获得交互式 shell 的 nvm 环境。Node 查找主要覆盖 Homebrew 路径与已有 PATH。
@@ -455,6 +486,7 @@ git diff --check
 ```
 
 - `editor/workflow.test.js`：临时博客、HTTP 保存、命名、重复备份、图片备份、revision 冲突、备份失败不覆盖、临时 bare Git 远端发布、保留无关文件、无变化跳过、空远端首次推送、错误远端失败。
+- `editor/localization.test.js`：默认英文、切换中文、未知语言回退、Swift/浏览器词典一致；HTTP workflow 同时检查保存偏好后只读接口更新。
 - `editor/metadata.test.js`：front matter/body 保留、标签／分类／关键词批处理、版本备份、配置注释、部署 root。
 - `LunarPhaseTests.swift`：SunCalc 固定参考数据、新月／满月、北半球／南半球朝向、位置缺失回退。
 - `MoonLocationTests.swift`：IANA 分秒坐标、坐标范围、未知时区、IP 响应校验、默认实现没有系统定位权限调用。
