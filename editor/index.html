@@ -1,21 +1,33 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Moonlit 🌗 Desk · 编辑器</title><link rel="stylesheet" href="/style.css"><script defer src="/editor-moon.js"></script><script defer src="/vendor/purify.js"></script><script defer src="/vendor/turndown.js"></script><script defer src="/vendor/gfm.js"></script><script defer src="/rich-editor.js"></script><script defer src="/app.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Moonlit 🌗 Desk · 编辑器</title><link rel="stylesheet" href="/style.css"><script defer src="/editor-moon.js"></script><script defer src="/vendor/purify.js"></script><script defer src="/vendor/turndown.js"></script><script defer src="/vendor/gfm.js"></script><script defer src="/rich-editor.js"></script><script defer src="/app.js"></script><script defer src="/settings-ui.js"></script></head>
 <body>
 <aside>
   <header><a class="brand" id="blog-link" href="http://127.0.0.1:4000/" target="_blank" rel="noopener" aria-label="打开本地博客">Moonlit <span data-editor-moon aria-hidden="true">🌗</span> Desk</a><span id="site-name">文章编辑器</span></header>
-  <button id="new" class="primary">新建文章</button>
+  <button id="new" class="primary">新建文章</button><button id="settings-button">网站设置</button>
   <input id="filter" type="search" placeholder="搜索文章与草稿" aria-label="搜索文章与草稿">
   <nav id="articles" aria-label="文章列表"></nav>
 </aside>
 <main>
   <header class="topbar"><div><h1 id="heading">开始写作</h1><p id="file-path">选择一篇文章，或新建一篇</p></div><div class="publish-actions"><button id="publish" disabled>发布到 GitHub</button><button id="save" class="primary" disabled>保存文章 <kbd>⌘S</kbd></button></div></header>
+  <details id="article-properties">
+    <summary>文章属性 · 标题、标签、分类与关键词</summary>
+    <fieldset id="metadata-fields" disabled>
+      <label>文章标题<input id="meta-title"></label>
+      <label>第二语言标题<input id="meta-title-zh"></label>
+      <label>日期<input id="meta-date" type="date"></label>
+      <label>关键词<input id="meta-keywords" list="keyword-options" placeholder="多个关键词用逗号分隔"></label>
+      <div><label>标签<select id="meta-tags" multiple size="3"></select></label><button type="button" data-add-meta="tags">添加标签</button></div>
+      <div><label>分类／归档分组<select id="meta-categories" multiple size="3"></select></label><button type="button" data-add-meta="categories">添加分类</button></div>
+      <datalist id="keyword-options"></datalist>
+    </fieldset>
+  </details>
   <div class="toolbar" role="toolbar" aria-label="编辑工具">
     <button data-wrap="**" data-command="bold" title="加粗"><strong>粗体</strong></button>
     <button data-wrap="*" data-command="italic" title="斜体"><em>斜体</em></button>
     <select id="block-format" aria-label="段落样式"><option value="p">正文</option><option value="h2">标题 2</option><option value="h3">标题 3</option><option value="blockquote">引用</option></select>
     <button data-command="insertUnorderedList">无序列表</button><button data-command="insertOrderedList">有序列表</button>
-    <button id="insert-link">链接</button><button id="insert-image">插入图片</button>
+    <button id="insert-link">链接</button><button id="insert-fold">折叠内容</button><button id="insert-image">插入图片</button>
     <input id="images" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
     <span class="hint">可直接粘贴或拖入图片</span>
     <button id="md-button" aria-pressed="false">MD 编辑器</button>
@@ -40,8 +52,41 @@
 <label>中文标题<input name="chinese" maxlength="180" placeholder="新的开始"></label>
 <label>文件名<input name="slug" maxlength="120" pattern="[A-Za-z0-9_-]+" placeholder="根据标题自动生成"><small id="slug-hint">留空自动生成，中文标题使用拼音和下划线</small></label>
 <label>保存位置<select name="zone"><option value="_drafts">草稿</option><option value="_posts">文章</option></select></label>
-<label class="checkbox-label"><input name="bilingual" type="checkbox">包含 Chinese version 双语区</label>
+
 <div class="dialog-actions"><button type="button" id="cancel-new">取消</button><button type="submit" class="primary">开始写作</button></div>
 </form>
+</dialog>
+<dialog id="settings-dialog">
+  <header class="dialog-heading"><h2>网站设置</h2><button id="close-settings" type="button">关闭</button></header>
+  <p id="settings-status" role="status"></p>
+  <details open><summary>网站信息</summary>
+    <form id="site-form" class="settings-form">
+      <label>网站名称<input name="title" required></label>
+      <label>副标题<input name="subtitle"></label>
+      <label>网站描述<input name="description"></label>
+      <label>网站关键词<input name="keywords" placeholder="多个关键词用逗号分隔"></label>
+      <button type="submit" class="primary">保存网站信息</button>
+    </form>
+  </details>
+  <details><summary>标签、分类和关键词</summary>
+    <div class="settings-form">
+      <label>管理类型<select id="taxonomy-kind"><option value="tags">标签</option><option value="categories">分类／归档分组</option><option value="keywords">关键词</option></select></label>
+      <label>已有名称<select id="taxonomy-existing"></select></label>
+      <label>新名称<input id="taxonomy-name"></label>
+      <div class="dialog-actions"><button data-taxonomy="add">新增</button><button data-taxonomy="rename">重命名</button><button data-taxonomy="remove">移除</button></div>
+      <p class="hint-text">重命名和移除会同步更新引用此项的文章，并先备份受影响的版本。日期归档由文章日期生成。</p>
+    </div>
+  </details>
+  <details><summary>GitHub 发布</summary>
+    <p id="github-account" class="hint-text"></p>
+    <form id="deployment-form" class="settings-form">
+      <label>目标仓库<input name="repository" required placeholder="owner/repository 或 GitHub 地址"></label>
+      <label>部署分支<input name="branch" value="gh-pages" required></label>
+      <label>网站地址<input name="siteUrl" type="url" placeholder="https://owner.github.io/repository/"></label>
+      <label class="checkbox-label"><input name="githubPages" type="checkbox">发布后配置 GitHub Pages</label>
+      <label>新仓库可见性<select name="visibility"><option value="public">公开</option><option value="private">私有</option></select></label>
+      <div class="dialog-actions"><button type="button" id="create-repository">创建这个 GitHub 仓库</button><button type="submit" class="primary">保存发布设置</button></div>
+    </form>
+  </details>
 </dialog>
 </body></html>

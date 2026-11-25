@@ -114,6 +114,12 @@ test('save, version deduplication, image backups and Git publication', async t =
   assert.equal(again.backedUp, 0);
   assert.equal(again.skipped, 1);
   assert(stages.length >= 3);
+  const empty = path.join(work, 'empty.git');
+  git(['init','--bare','--initial-branch=main',empty]);
+  process.env.MOONLIT_DEPLOY_TEST_REPO = empty;
+  const firstPush = await publishSite(project, () => {});
+  assert(firstPush.commit);
+  assert(git(['show','main:index.html'],empty).includes('Test article'));
   process.env.MOONLIT_DEPLOY_TEST_REPO = path.join(work, 'missing-remote.git');
   await assert.rejects(publishSite(project, () => {}));
 });

@@ -16,6 +16,52 @@ const rich = new RichDocument($('#rich-body'), text => {
 });
 
 
+function askText(label, value = '') {
+  return new Promise(resolve => {
+    const dialog = document.createElement('dialog');
+    const form = document.createElement('form');
+    form.method = 'dialog';
+    const field = document.createElement('label');
+    field.textContent = label;
+    const input = document.createElement('input');
+    input.value = value;
+    field.append(input);
+    const actions = document.createElement('div');
+    actions.className = 'dialog-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button'; cancel.textContent = '取消';
+    cancel.onclick = () => dialog.close();
+    const submit = document.createElement('button');
+    submit.type = 'submit'; submit.textContent = '确定'; submit.value = 'ok';
+    actions.append(cancel, submit);
+    form.append(field, actions); dialog.append(form); document.body.append(dialog);
+    dialog.addEventListener('close', () => {
+      const result = dialog.returnValue === 'ok' ? input.value : null;
+      dialog.remove(); resolve(result);
+    }, { once: true });
+    dialog.showModal(); input.focus(); input.select();
+  });
+}
+
+function askConfirm(text) {
+  return new Promise(resolve => {
+    const dialog = document.createElement('dialog');
+    const form = document.createElement('form'); form.method = 'dialog';
+    const content = document.createElement('p'); content.textContent = text;
+    content.style.whiteSpace = 'pre-wrap';
+    const actions = document.createElement('div'); actions.className = 'dialog-actions';
+    for (const [label, value] of [['取消','cancel'], ['确定','ok']]) {
+      const button = document.createElement('button'); button.textContent = label;
+      button.value = value; button.type = 'submit'; actions.append(button);
+    }
+    form.append(content, actions); dialog.append(form); document.body.append(dialog);
+    dialog.addEventListener('close', () => {
+      const result = dialog.returnValue === 'ok'; dialog.remove(); resolve(result);
+    }, { once: true });
+    dialog.showModal();
+  });
+}
+
 function message(text, error = false) {
   status.textContent = text;
   status.parentElement.classList.toggle('error', error);
@@ -34,9 +80,9 @@ function jsonRequest(data) {
 }
 
 function dirty() { return !!currentPath && editor.value !== savedText.replace(/\r\n?/g, '\n'); }
-function canLeave() {
-  if (uploading || saving || publishing) { message('请等待图片上传或保存完成。'); return false; }
-  return !dirty() || confirm('有尚未保存的修改，确定离开这篇文章吗？');
+async function canLeave() {
+  if (uploading || saving || publishing || metadataPending) { message('请等待图片上传或保存完成。'); return false; }
+  return !dirty() || await askConfirm('有尚未保存的修改，确定离开这篇文章吗？');
 }
 
 function renderList() {
@@ -72,6 +118,8 @@ function changed() {
 }
 
 function setDocument(file, text, rev, title, isNew = false) {
+  metadataQueue = Promise.resolve(true);
+  metadataPending = 0;
   currentPath = file;
   currentRevision = rev;
   savedText = isNew ? '' : text;
@@ -88,7 +136,7 @@ function setDocument(file, text, rev, title, isNew = false) {
 }
 
 async function openArticle(article) {
-  if (!canLeave()) return;
+  if (!await canLeave()) return;
   const load = ++activeLoad;
   try {
     const data = await api('/api/article?path=' + encodeURIComponent(article.path));
@@ -99,6 +147,7 @@ async function openArticle(article) {
 
 async function save() {
   if (!currentPath || saving || uploading || publishing) return false;
+  if (!await metadataQueue) return false;
   saving = true;
   $('#save').disabled = true;
   const text = dirty() ? editor.value : savedText;
@@ -120,6 +169,7 @@ function escapeHTML(text) {
 function setMode(markdown) {
   richMode = !markdown;
   $('#rich-pane').hidden = markdown;
+  $('#article-properties').hidden = markdown;
   $('#source-pane').hidden = !markdown;
   $('#workspace').classList.toggle('rich-mode', !markdown);
   $('#md-button').setAttribute('aria-pressed', String(markdown));
@@ -142,6 +192,7 @@ async function loadRich(text, focus = false) {
     const result = await api('/api/preview', jsonRequest({ text }));
     if (sequence !== renderSequence || editor.value !== text) return false;
     rich.load(result);
+    syncArticleProperties(result.metadata);
     $('#paper-title').textContent = result.title;
     richReady = true;
     rich.setEditable(richMode && !publishing);
@@ -214,6 +265,7 @@ async function pollPublish() {
     publishing = state.status === 'running';
     editor.readOnly = publishing;
     rich.setEditable(!publishing && richMode && richReady);
+    $('#metadata-fields').disabled = publishing || !articleProperties;
     $('#publish').disabled = publishing || !currentPath;
     $('#save').disabled = publishing || !currentPath;
     $('#publish').textContent = publishing ? '正在发布…' : '发布到 GitHub';
@@ -236,7 +288,7 @@ $('#publish').addEventListener('click', async () => {
   const description = currentPath.startsWith('_drafts/')
     ? '这会将当前草稿转为文章，并生成、推送整个博客到 GitHub。'
     : '这会生成并推送整个博客，包含其他已保存的文章和主题修改。';
-  if (!confirm(description + '\n目标：' + publishTarget + '\n发布前会保存当前文章，并将文章版本备份到配置的备份目录。继续发布吗？')) return;
+  if (!await askConfirm(description + '\n目标：' + publishTarget + '\n发布前会保存当前文章，并将文章版本备份到配置的备份目录。继续发布吗？')) return;
   if (!await save()) return;
   if (dirty()) return message('保存期间有新修改，请再次点击发布。');
   try {
@@ -302,10 +354,18 @@ document.querySelectorAll('[data-command]').forEach(button => button.addEventLis
 $('#block-format').addEventListener('change', event => {
   if (richMode && richReady && !publishing) rich.command('formatBlock', event.target.value);
 });
-$('#insert-link').addEventListener('click', () => {
+$('#insert-fold').addEventListener('click', async () => {
+  if (!currentPath || publishing) return;
+  const name = (await askText('折叠区域的标题', '更多内容'))?.trim();
+  if (!name) return;
+  if (richMode) rich.insertFold(name);
+  else insert('\n\n<details>\n<summary>' + rich.escape(name) + '</summary>\n\n\n\n</details>\n');
+
+});
+$('#insert-link').addEventListener('click', async () => {
   if (!currentPath || publishing) return;
   const text = richMode ? rich.selectedText() : editor.value.slice(editor.selectionStart, editor.selectionEnd);
-  const url = prompt('链接地址', 'https://');
+  const url = await askText('链接地址', 'https://');
   if (!url) return;
   if (!/^https?:\/\/[^\s)]+$/.test(url)) return message('请输入有效的 http 或 https 链接。', true);
   if (richMode) {
@@ -314,7 +374,7 @@ $('#insert-link').addEventListener('click', () => {
   } else insert('[' + (text || '链接文字') + '](' + url + ')');
 });
 $('#md-button').addEventListener('click', async () => {
-  if (!currentPath || publishing || uploading || saving) return;
+  if (!currentPath || publishing || uploading || saving || metadataPending) return;
   if (richMode) {
     setMode(true);
     editor.focus();
@@ -347,8 +407,8 @@ $('#rich-body').addEventListener('drop', event => {
     uploadImages(event.dataTransfer.files);
   }
 });
-$('#new').addEventListener('click', () => {
-  if (canLeave()) { resetNameSuggestion(); $('#new-dialog').showModal(); }
+$('#new').addEventListener('click', async () => {
+  if (await canLeave()) { resetNameSuggestion(); $('#new-dialog').showModal(); }
 });
 $('#cancel-new').addEventListener('click', () => $('#new-dialog').close());
 const newForm = $('#new-form');
@@ -411,9 +471,8 @@ newForm.addEventListener('submit', async event => {
     ++activeLoad;
     const now = new Date();
     const date = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    const bilingual = newForm.elements.bilingual.checked;
-    const text = '---\ntitle: ' + JSON.stringify(name.title) + (bilingual || data.chinese.trim() ? '\ntitle_zh: ' + JSON.stringify(name.titleZh) : '') +
-      '\ndate: ' + date + '\ntags: []\n---\n\n' + (bilingual ? '<details>\n<summary>Chinese version</summary>\n\n</details>\n' : '');
+    const text = '---\ntitle: ' + JSON.stringify(name.title) + (data.chinese.trim() ? '\ntitle_zh: ' + JSON.stringify(name.titleZh) : '') +
+      '\ndate: ' + date + '\ntags: []\n---\n\n';
     setDocument(file, text, null, name.titleZh, true);
     $('#new-dialog').close();
     newForm.reset();
@@ -430,17 +489,16 @@ document.addEventListener('keydown', event => {
 window.addEventListener('beforeunload', event => {
   if (dirty() || uploading || saving) { event.preventDefault(); event.returnValue = ''; }
 });
-(async () => {
+document.addEventListener('DOMContentLoaded', async () => {
   try {
     const session = await api('/api/session');
     token = session.token;
     $('#site-name').textContent = session.siteTitle;
-    newForm.elements.bilingual.defaultChecked = session.bilingual;
-    newForm.elements.bilingual.checked = session.bilingual;
+    taxonomyCatalog = await api('/api/taxonomy');
     $('#blog-link').title = session.siteTitle;
     publishTarget = session.repository + ' · ' + session.branch;
     await refreshList();
     message('已连接 · 保存时自动备份');
     await pollPublish();
   } catch (error) { message(error.message, true); }
-})();
+});

@@ -111,6 +111,30 @@ const server = http.createServer(async (request, response) => {
       return send(response, 200, { token, project: path.basename(root), projectPath: root, articleBackups: backupFolder(root), siteTitle: config.title || path.basename(root),
         repository: config.deploy?.repository || config.deploy?.repo, bilingual: !!require('./project').settings().bilingual, branch: config.deploy?.branch || 'remote default' });
     }
+    if (request.method === 'GET' && url.pathname === '/api/settings') {
+      const config = require('./configuration').readConfig(root).value;
+      return send(response, 200, { site: { title: config.title || '', subtitle: config.subtitle || '', description: config.description || '', keywords: config.keywords || '' },
+        deployment: { repository: config.deploy?.repo || config.deploy?.repository || '', branch: config.deploy?.branch || 'gh-pages', siteUrl: config.url || '', githubPages: !!config.moonlit?.github_pages },
+        taxonomy: require('./metadata').taxonomy(root), account: await require('./configuration').githubAccount() });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/taxonomy') {
+      return send(response, 200, require('./metadata').taxonomy(root));
+    }
+    if (request.method === 'POST' && ['/api/deployment', '/api/repository', '/api/site', '/api/taxonomy', '/api/metadata'].includes(url.pathname)) {
+      const input = JSON.parse((await readBody(request, 2 * 1024 * 1024)).toString());
+      if (publishing.status === 'running') fail(409, '发布中，请稍后修改设置。');
+      try {
+        const config = require('./configuration');
+        const metadataTools = require('./metadata');
+        let result;
+        if (url.pathname === '/api/deployment') result = await config.saveDeployment(root, input);
+        if (url.pathname === '/api/repository') result = await config.createRepository(input);
+        if (url.pathname === '/api/site') result = metadataTools.saveSite(root, input);
+        if (url.pathname === '/api/taxonomy') result = metadataTools.manageTaxonomy(root, input);
+        if (url.pathname === '/api/metadata') result = metadataTools.editMetadata(input.text, input.patch);
+        return send(response, 200, result);
+      } catch (error) { fail(400, error.message); }
+    }
     if (request.method === 'POST' && url.pathname === '/api/article-name') {
       const body = JSON.parse((await readBody(request, 8192)).toString());
       try { return send(response, 200, articleName(body)); }
@@ -147,7 +171,7 @@ const server = http.createServer(async (request, response) => {
       }
       publishing = { status: 'running', message: '正在准备发布', path: relative, revision: revision(text), startedAt: new Date().toISOString() };
       publishSite(root, message => { publishing.message = message; }).then(result => {
-        publishing = { ...publishing, status: 'success', message: result.unchanged ? '网站内容相同，已跳过重复推送。' : '已推送 GitHub，网站部署后即可访问。', result };
+        publishing = { ...publishing, status: 'success', message: result.pagesError ? '已推送 GitHub，但 Pages 配置失败：' + result.pagesError : result.unchanged ? '网站内容相同，已跳过重复推送。' : '已推送 GitHub。' + (result.pagesUrl || '网站部署后即可访问。'), result };
       }).catch(error => {
         publishing = { ...publishing, status: 'failed', message: error.message };
       });
@@ -204,7 +228,7 @@ const server = http.createServer(async (request, response) => {
       let warning;
       try { title = metadata(text).data.title; }
       catch (error) { warning = error.message + ' 保存前请在 MD 编辑器中修正顶部配置。'; }
-      return send(response, 200, { title, html: marked(body), frontMatter: header, warning });
+      return send(response, 200, { title, html: marked(body), frontMatter: header, warning, metadata: warning ? null : require('./metadata').viewMetadata(text) });
     }
     if (request.method === 'GET' && url.pathname.startsWith('/images/')) {
       const file = safePath(source, decodeURIComponent(url.pathname.slice(1)));
@@ -220,7 +244,7 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && Object.hasOwn(vendors, url.pathname)) {
       return send(response, 200, fs.readFileSync(path.join(__dirname, '../node_modules', vendors[url.pathname])), 'text/javascript; charset=utf-8');
     }
-    const assets = { '/rich-editor.js': ['rich-editor.js','text/javascript; charset=utf-8'], '/editor-moon.js': ['editor-moon.js','text/javascript; charset=utf-8'], '/': ['index.html','text/html; charset=utf-8'], '/app.js': ['app.js','text/javascript; charset=utf-8'], '/style.css': ['style.css','text/css; charset=utf-8'] };
+    const assets = { '/settings-ui.js': ['settings-ui.js','text/javascript; charset=utf-8'], '/rich-editor.js': ['rich-editor.js','text/javascript; charset=utf-8'], '/editor-moon.js': ['editor-moon.js','text/javascript; charset=utf-8'], '/': ['index.html','text/html; charset=utf-8'], '/app.js': ['app.js','text/javascript; charset=utf-8'], '/style.css': ['style.css','text/css; charset=utf-8'] };
     if (request.method === 'GET' && Object.hasOwn(assets, url.pathname)) {
       const [file, mime] = assets[url.pathname];
       return send(response, 200, fs.readFileSync(path.join(__dirname, file)), mime);

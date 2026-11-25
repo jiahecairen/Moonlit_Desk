@@ -107,7 +107,7 @@ struct BackupService {
 enum HexoServer {
     static let address = URL(string: "http://127.0.0.1:4000/")!
 
-    static func start(project: URL, log: URL, port: Int = 4000, script: String? = nil) throws -> Process {
+    static func start(project: URL, log: URL, port: Int = 4000, script: String? = nil, arguments: [String] = []) throws -> Process {
         let entry = script ?? "node_modules/hexo-cli/bin/hexo"
         let cli = entry.hasPrefix("/") ? URL(fileURLWithPath: entry) : project.appendingPathComponent(entry)
         guard FileManager.default.fileExists(atPath: cli.path) else {
@@ -132,7 +132,7 @@ enum HexoServer {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: node)
         task.currentDirectoryURL = project
-        task.arguments = script == nil ? [cli.path, "server", "--ip", "127.0.0.1", "--port", String(port)] : [cli.path]
+        task.arguments = script == nil ? [cli.path, "server", "--ip", "127.0.0.1", "--port", String(port)] : [cli.path] + arguments
         task.standardOutput = output
         task.standardError = output
         try task.run()

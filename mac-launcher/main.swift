@@ -2,11 +2,13 @@ import AppKit
 import ServiceManagement
 
 protocol LauncherFeature {
+    @MainActor var isBusy: Bool { get }
     @MainActor func menuItems() -> [NSMenuItem]
     @MainActor func shutdown()
 }
 
 extension LauncherFeature {
+    @MainActor var isBusy: Bool { false }
     @MainActor func shutdown() {}
 }
 
@@ -36,7 +38,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
         log = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Logs/Moonlit-Hexo.log")
         super.init()
-        if let project { features = [EditorFeature(project: project, studio: studio)] }
+        configureFeatures()
     }
 
     private var interval: Int {
@@ -84,8 +86,8 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if isBackingUp {
-            showError("备份正在写入，请稍后再退出。")
+        if isBackingUp || features.contains(where: { $0.isBusy }) {
+            showError("后台任务正在进行，请稍后再退出。")
             return .terminateCancel
         }
         return .terminateNow
@@ -94,7 +96,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         info(project?.lastPathComponent ?? "请选择 Hexo 博客目录")
-        add("选择博客目录…", #selector(chooseProject), enabled: !isBackingUp)
+        add("选择博客目录…", #selector(chooseProject), enabled: !isBackingUp && !features.contains(where: { $0.isBusy }))
         menu.addItem(.separator())
         let occupied = HexoServer.portOccupied()
         let live = server?.isRunning == true
@@ -149,6 +151,13 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
         add("退出 Moonlit Desk", #selector(quit), key: "q")
     }
 
+    private func configureFeatures() {
+        features = [ProjectCreator(studio: studio) { [weak self] folder in
+            self?.connectProject(folder)
+        }]
+        if let project { features.append(EditorFeature(project: project, studio: studio)) }
+    }
+
     func register(_ feature: any LauncherFeature) {
         features.append(feature)
     }
@@ -185,6 +194,10 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
             showError("请选择包含 _config.yml 和 package.json 的 Hexo 博客目录。")
             return
         }
+        connectProject(folder)
+    }
+
+    private func connectProject(_ folder: URL) {
         var config = StudioSettings.load()
         config["projectPath"] = folder.path
         config.removeValue(forKey: "articleBackupPath")
@@ -194,7 +207,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if server?.isRunning == true { server?.terminate() }
         server = nil
         project = folder
-        features = [EditorFeature(project: folder, studio: studio)]
+        configureFeatures()
         defaults.removeObject(forKey: "lastBackup")
         nextRetry = .distantPast
         serverNotice = nil

@@ -44,7 +44,9 @@ open "Moonlit Desk.app"
 ~~~
 
 On first launch, choose your Hexo project. You can change it later using
-**选择博客目录…**. The app includes the editor runtime and reads the selected
+**选择博客目录…**. Use **新建 Hexo 博客…** to choose a parent folder and create
+a new site. Creation installs Hexo and verifies a successful build before connecting
+the site; Node.js 20.19 or newer and network access are required. The app includes the editor runtime and reads the selected
 project from local settings. Rebuilding is unnecessary when changing blogs.
 
 The menu supports starting and stopping Hexo, opening the editor, manual or
@@ -60,7 +62,14 @@ front matter. Its label changes to **富文本编辑器**, which returns to rich
 Opening an article or switching modes preserves the original source until you
 edit it. Embedded HTML, such as video players, is retained as a protected card
 and can be edited in Markdown. YAML errors are reported before saving.
-New posts can optionally include a Chinese version section.
+New posts start without a translation section. Use **折叠内容** to insert an
+optional section with your own heading. It opens while editing and stays collapsed
+on the published page until a reader clicks its heading. Existing sections are preserved.
+
+Expand **文章属性** to edit titles and date, select tags and categories, and add
+keywords. **网站设置** manages the site name, description, keywords, and shared
+tags/categories/keywords. Renaming or removing a shared entry updates matching
+articles after backing up their previous and new versions.
 
 Fill in any one of the title, Chinese title, or filename fields to create a post.
 English titles generate hyphenated filenames. Chinese titles generate pinyin
@@ -94,6 +103,11 @@ overrides include MOONLIT_PROJECT, MOONLIT_ARTICLE_BACKUPS, MOONLIT_SETTINGS,
 and EDITOR_PORT.
 
 ## GitHub publishing
+
+Open **网站设置 → GitHub 发布** to set a repository, branch, and public site URL.
+You can create a public or private repository there after logging in with
+`gh auth login`. Optionally enable GitHub Pages from the deployment branch.
+Use the full site URL, including the repository path for GitHub Pages project sites.
 
 The publish button saves the active article and builds the entire site from a
 temporary snapshot. A draft is moved into _posts/ after confirmation.

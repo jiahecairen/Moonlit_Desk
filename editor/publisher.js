@@ -7,24 +7,7 @@ const { spawn } = require('node:child_process');
 const yaml = require('js-yaml');
 const { backupArticle } = require('./article-backups');
 
-function command(executable, args, cwd) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(executable, args, { cwd, env: {
-      ...process.env, PATH: '/opt/homebrew/bin:/usr/local/bin:' + process.env.PATH,
-      GIT_TERMINAL_PROMPT: '0', GH_PROMPT_DISABLED: '1'
-    } });
-    let output = '';
-    const timer = setTimeout(() => child.kill('SIGTERM'), 180000);
-    child.stdout.on('data', chunk => { output = (output + chunk).slice(-12000); });
-    child.stderr.on('data', chunk => { output = (output + chunk).slice(-12000); });
-    child.on('error', error => { clearTimeout(timer); reject(error); });
-    child.on('close', code => {
-      clearTimeout(timer);
-      if (code === 0) resolve(output.trim());
-      else reject(new Error(output.trim() || '发布命令执行失败。'));
-    });
-  });
-}
+const { command } = require('./command');
 
 async function publishSite(root, update) {
   const config = yaml.safeLoad(fs.readFileSync(path.join(root, '_config.yml'), 'utf8'));
@@ -81,7 +64,13 @@ async function publishSite(root, update) {
     if (!fs.existsSync(path.join(output, 'index.html'))) throw new Error('没有生成网站首页，已停止发布。');
     update('正在读取 GitHub 部署分支');
     const checkout = path.join(work, 'repository');
-    await runGit(['clone', '--depth', '1', '--branch', branch, '--', repository, checkout], root);
+    const remoteBranch = await runGit(['ls-remote', '--heads', repository, 'refs/heads/' + branch], root);
+    if (remoteBranch) {
+      await runGit(['clone', '--depth', '1', '--branch', branch, '--', repository, checkout], root);
+    } else {
+      await runGit(['init', '--initial-branch=' + branch, checkout], root);
+      await runGit(['remote', 'add', 'origin', repository], checkout);
+    }
     const manifestName = '.moonlit-generated-files.json';
     const oldManifest = path.join(checkout, manifestName);
     let oldFiles = [];
@@ -104,12 +93,33 @@ async function publishSite(root, update) {
     fs.writeFileSync(oldManifest, JSON.stringify(generated.sort(), null, 2));
     await runGit(['add', '--all'], checkout);
     const changes = await runGit(['diff', '--cached', '--name-only'], checkout);
-    if (!changes) return { unchanged: true, backedUp, skipped, repository, branch };
+    if (!changes) {
+      let pagesUrl, pagesError;
+      if (!localTest && config.moonlit?.github_pages) {
+        try { pagesUrl = await require('./configuration').enablePages(repository, branch); }
+        catch (error) { pagesError = error.message; }
+      }
+      return { unchanged: true, backedUp, skipped, repository, branch, pagesUrl, pagesError };
+    }
     update('正在提交并推送 GitHub');
+    if (!localTest) {
+      try { await runGit(['var', 'GIT_AUTHOR_IDENT'], checkout); }
+      catch {
+        const user = JSON.parse(await command('gh', ['api', 'user'], checkout));
+        await runGit(['config', 'user.name', user.name || user.login], checkout);
+        await runGit(['config', 'user.email', user.id + '+' + user.login + '@users.noreply.github.com'], checkout);
+      }
+    }
     await runGit(['commit', '-m', 'Publish site via Moonlit Desk ' + new Date().toISOString()], checkout);
     await runGit(['push', 'origin', 'HEAD:refs/heads/' + branch], checkout);
     const commit = await runGit(['rev-parse', 'HEAD'], checkout);
-    return { commit, repository, branch, backedUp, skipped, unchanged: false };
+    let pagesUrl, pagesError;
+    if (!localTest && config.moonlit?.github_pages) {
+      update('已推送，正在配置 GitHub Pages');
+      try { pagesUrl = await require('./configuration').enablePages(repository, branch); }
+      catch (error) { pagesError = error.message; }
+    }
+    return { commit, repository, branch, backedUp, skipped, unchanged: false, pagesUrl, pagesError };
   } finally {
     fs.rmSync(work, { recursive: true, force: true });
   }

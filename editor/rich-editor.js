@@ -114,6 +114,20 @@ class RichDocument {
     this.captureSelection();
   }
 
+  insertFold(title) {
+    const key = 'fold-' + crypto.randomUUID();
+    this.insertHTML('<details open data-new-fold="' + key + '"><summary contenteditable="false">' +
+      this.escape(title) + '</summary><p><br></p></details><p><br></p>');
+    const details = this.element.querySelector('[data-new-fold="' + key + '"]');
+    if (!details) return;
+    details.removeAttribute('data-new-fold');
+    const range = document.createRange();
+    range.selectNodeContents(details.querySelector('p'));
+    range.collapse(true);
+    this.range = range;
+    this.restoreSelection(range);
+  }
+
   pasteHTML(html) {
     const clean = DOMPurify.sanitize(html, {
       FORBID_TAGS: ['iframe', 'object', 'embed', 'form', 'input', 'button', 'script', 'style'],
