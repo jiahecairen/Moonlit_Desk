@@ -176,9 +176,7 @@ function setMode(markdown) {
   $('#md-button').textContent = markdown ? '富文本编辑器' : 'MD 编辑器';
   $('#md-button').title = markdown ? '切换回富文本写作' : '查看与编辑 Markdown 源码';
   rich.setEditable(!markdown && richReady && !publishing);
-  for (const control of document.querySelectorAll('[data-command]:not([data-wrap]), #block-format')) {
-    control.disabled = markdown || !currentPath;
-  }
+  updateToolbar();
 }
 
 async function loadRich(text, focus = false) {
@@ -195,6 +193,7 @@ async function loadRich(text, focus = false) {
     syncArticleProperties(result.metadata);
     $('#paper-title').textContent = result.title;
     richReady = true;
+    updateToolbar();
     rich.setEditable(richMode && !publishing);
     if (focus && richMode) $('#rich-body').focus();
     if (result.warning) message(result.warning, true);
@@ -266,6 +265,7 @@ async function pollPublish() {
     editor.readOnly = publishing;
     rich.setEditable(!publishing && richMode && richReady);
     $('#metadata-fields').disabled = publishing || !articleProperties;
+    updateToolbar();
     $('#publish').disabled = publishing || !currentPath;
     $('#save').disabled = publishing || !currentPath;
     $('#publish').textContent = publishing ? '正在发布…' : '发布到 GitHub';
@@ -337,13 +337,14 @@ editor.addEventListener('drop', event => {
   if (event.dataTransfer.files.length) { event.preventDefault(); uploadImages(event.dataTransfer.files); }
 });
 // Keep the writing selection when a formatting button receives a mouse click.
-$('.toolbar').addEventListener('mousedown', event => {
+document.querySelectorAll('.toolbar').forEach(toolbar => toolbar.addEventListener('mousedown', event => {
   if (richMode && event.target.closest('button')) event.preventDefault();
-});
+}));
 document.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => {
   if (!currentPath || publishing) return;
   if (richMode) {
     if (richReady) rich.command(button.dataset.command);
+    updateToolbar();
     return;
   }
   if (button.dataset.wrap) {
@@ -351,6 +352,53 @@ document.querySelectorAll('[data-command]').forEach(button => button.addEventLis
     insert(button.dataset.wrap + selected + button.dataset.wrap);
   }
 }));
+function updateToolbar() {
+  for (const control of document.querySelectorAll('.toolbar [data-command], .toolbar [data-rich-only], #insert-link, #insert-image, #insert-fold')) {
+    control.disabled = !currentPath || publishing || (richMode ? !richReady : control.hasAttribute('data-rich-only'));
+    if (control.hasAttribute('aria-pressed')) {
+      let active = false;
+      if (richMode && richReady) {
+        try { active = document.queryCommandState(control.dataset.command); } catch {}
+      }
+      control.setAttribute('aria-pressed', String(active));
+    }
+  }
+  if (richMode && richReady) {
+    const block = String(document.queryCommandValue('formatBlock') || 'p').toLowerCase().replace(/[<>]/g, '');
+    $('#block-format').value = ['p','h1','h2','h3','h4','blockquote'].includes(block) ? block : 'p';
+  }
+}
+document.addEventListener('selectionchange', updateToolbar);
+$('#advanced-button').addEventListener('click', () => {
+  const expanded = $('#advanced-button').getAttribute('aria-expanded') !== 'true';
+  $('#advanced-button').setAttribute('aria-expanded', String(expanded));
+  $('#advanced-button').textContent = expanded ? '高级 ▴' : '高级 ▾';
+  $('#advanced-tools').hidden = !expanded;
+});
+$('#inline-code').addEventListener('click', () => {
+  if (!richMode || !richReady || publishing) return;
+  const text = rich.selectedText() || '代码';
+  rich.insertHTML('<code>' + rich.escape(text) + '</code>&nbsp;');
+});
+$('#code-block').addEventListener('click', () => {
+  if (!richMode || !richReady || publishing) return;
+  const text = rich.selectedText() || '在这里输入代码';
+  rich.insertHTML('<pre><code>' + rich.escape(text) + '</code></pre><p><br></p>');
+});
+$('#insert-table').addEventListener('click', async () => {
+  if (!richMode || !richReady || publishing) return;
+  const value = await askText('表格尺寸：正文行数 × 列数（另含一行表头）', '3 × 3');
+  if (value === null) return;
+  const match = /^\s*(\d+)\s*[xX×*,，]\s*(\d+)\s*$/.exec(value);
+  if (!match || +match[1] < 1 || +match[1] > 30 || +match[2] < 1 || +match[2] > 12) return message('请输入 1–30 行、1–12 列，例如 3 × 3。', true);
+  rich.insertTable(+match[1], +match[2]);
+});
+for (const [id, remove] of [['table-row', false], ['remove-table', true]]) {
+  $('#' + id).addEventListener('click', () => {
+    if (!richMode || !richReady || publishing) return;
+    if (!rich.editTable(remove)) message('请先点击表格中的一个单元格。');
+  });
+}
 $('#block-format').addEventListener('change', event => {
   if (richMode && richReady && !publishing) rich.command('formatBlock', event.target.value);
 });

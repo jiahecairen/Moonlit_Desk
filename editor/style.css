@@ -229,3 +229,13 @@ small { color: var(--muted); font-size: 12px; }
 #settings-status { font-size:14px; line-height:1.6; color:var(--accent); }
 .settings-form label { margin:14px 0; }
 @media(max-width:650px) { #metadata-fields { grid-template-columns:1fr; } #article-properties { padding:10px; } }
+
+.toolbar { flex-shrink:0; }
+.toolbar-divider { width:1px; height:23px; background:var(--line); margin:0 3px; }
+.toolbar button[aria-pressed="true"], #advanced-button[aria-expanded="true"] { background:#574260; border-color:#d1abd9; color:#fff; }
+.advanced-toolbar { background:var(--panel); border-top:0; max-height:24vh; overflow:auto; }
+#rich-body h1 { font-size:30px; line-height:1.4; }
+#rich-body h4 { font-size:18px; }
+#rich-body :not(pre) > code { padding:2px 5px; border-radius:4px; background:#f0edf3; color:#764568; }
+#rich-body hr { border:0; border-top:1px solid #cfc6d5; margin:24px 0; }
+#rich-body sub, #rich-body sup { font-size:.75em; }

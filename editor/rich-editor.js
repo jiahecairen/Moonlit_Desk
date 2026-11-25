@@ -16,13 +16,24 @@ class RichDocument {
       filter: node => node.nodeType === 1 && node.hasAttribute('data-rich-raw'),
       replacement: (_, node) => '\n\n' + (this.rawBlocks.get(node.getAttribute('data-rich-raw')) || '') + '\n\n'
     });
+    this.converter.addRule('tableCellLines', {
+      filter: ['th', 'td'],
+      replacement: (content, node) => {
+        const text = content.trim().replace(/\r?\n/g, '<br>').replace(/\\?\|/g, '\\|');
+        return (node.cellIndex === 0 ? '| ' : ' ') + text + ' |';
+      }
+    });
+    this.converter.addRule('semanticFormatting', {
+      filter: ['u', 'ins', 'sub', 'sup'],
+      replacement: (content, node) => '<' + node.nodeName.toLowerCase() + '>' + content + '</' + node.nodeName.toLowerCase() + '>'
+    });
     this.converter.addRule('translationSummary', {
       filter: 'summary', replacement: () => ''
     });
     this.converter.addRule('translationDetails', {
       filter: 'details',
       replacement: (content, node) => {
-        const label = node.querySelector('summary')?.textContent || 'Chinese version';
+        const label = node.querySelector('summary')?.textContent || '更多内容';
         return '\n\n<details>\n<summary>' + this.escape(label) + '</summary>\n\n' + content.trim() + '\n\n</details>\n\n';
       }
     });
@@ -104,8 +115,10 @@ class RichDocument {
 
   command(name, value) {
     this.restoreSelection();
+    const before = this.element.innerHTML;
     document.execCommand(name, false, value);
     this.captureSelection();
+    if (before !== this.element.innerHTML) this.onChange(this.serialize());
   }
 
   insertHTML(html, bookmark) {
@@ -126,6 +139,34 @@ class RichDocument {
     range.collapse(true);
     this.range = range;
     this.restoreSelection(range);
+  }
+
+  insertTable(rows, columns) {
+    const header = '<tr>' + '<th>标题</th>'.repeat(columns) + '</tr>';
+    const row = '<tr>' + '<td><br></td>'.repeat(columns) + '</tr>';
+    this.insertHTML('<table><thead>' + header + '</thead><tbody>' + row.repeat(rows) + '</tbody></table><p><br></p>');
+  }
+
+  editTable(remove = false) {
+    this.restoreSelection();
+    const node = window.getSelection().anchorNode;
+    const table = (node?.nodeType === 1 ? node : node?.parentElement)?.closest('table');
+    if (!table || !this.element.contains(table)) return false;
+    if (remove) {
+      const paragraph = document.createElement('p'); paragraph.append(document.createElement('br'));
+      table.replaceWith(paragraph);
+      const range = document.createRange(); range.selectNodeContents(paragraph); range.collapse(true);
+      this.range = range; this.restoreSelection();
+    } else {
+      const body = table.tBodies[0] || table.createTBody();
+      const row = body.insertRow();
+      const columns = table.rows[0]?.cells.length || 1;
+      for (let i = 0; i < columns; i++) row.insertCell().append(document.createElement('br'));
+      const range = document.createRange(); range.selectNodeContents(row.cells[0]); range.collapse(true);
+      this.range = range; this.restoreSelection();
+    }
+    this.onChange(this.serialize());
+    return true;
   }
 
   pasteHTML(html) {

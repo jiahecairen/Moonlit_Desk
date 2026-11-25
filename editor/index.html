@@ -22,15 +22,29 @@
       <datalist id="keyword-options"></datalist>
     </fieldset>
   </details>
-  <div class="toolbar" role="toolbar" aria-label="编辑工具">
-    <button data-wrap="**" data-command="bold" title="加粗"><strong>粗体</strong></button>
-    <button data-wrap="*" data-command="italic" title="斜体"><em>斜体</em></button>
-    <select id="block-format" aria-label="段落样式"><option value="p">正文</option><option value="h2">标题 2</option><option value="h3">标题 3</option><option value="blockquote">引用</option></select>
-    <button data-command="insertUnorderedList">无序列表</button><button data-command="insertOrderedList">有序列表</button>
-    <button id="insert-link">链接</button><button id="insert-fold">折叠内容</button><button id="insert-image">插入图片</button>
+  <div class="toolbar" role="toolbar" aria-label="常用编辑工具">
+    <button data-command="undo" data-rich-only title="撤销 ⌘Z">撤销</button><button data-command="redo" data-rich-only title="重做 ⇧⌘Z">重做</button>
+    <span class="toolbar-divider" aria-hidden="true"></span>
+    <select id="block-format" data-rich-only aria-label="段落样式"><option value="p">正文</option><option value="h1">标题 1</option><option value="h2">标题 2</option><option value="h3">标题 3</option><option value="h4">标题 4</option><option value="blockquote">引用</option></select>
+    <button data-wrap="**" data-command="bold" aria-pressed="false" title="加粗 ⌘B"><strong>粗体</strong></button>
+    <button data-wrap="*" data-command="italic" aria-pressed="false" title="斜体 ⌘I"><em>斜体</em></button>
+    <button data-command="underline" data-rich-only aria-pressed="false" title="下划线 ⌘U"><u>下划线</u></button>
+    <button data-command="insertUnorderedList" data-rich-only aria-pressed="false">无序列表</button><button data-command="insertOrderedList" data-rich-only aria-pressed="false">有序列表</button>
+    <button id="insert-link">链接</button><button id="insert-image">图片</button>
     <input id="images" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
-    <span class="hint">可直接粘贴或拖入图片</span>
+    <button id="advanced-button" aria-expanded="false" aria-controls="advanced-tools">高级 ▾</button>
     <button id="md-button" aria-pressed="false">MD 编辑器</button>
+  </div>
+  <div id="advanced-tools" class="toolbar advanced-toolbar" role="toolbar" aria-label="高级编辑工具" hidden>
+    <button data-wrap="~~" data-command="strikeThrough" aria-pressed="false">删除线</button>
+    <button data-command="subscript" data-rich-only aria-pressed="false">下标</button><button data-command="superscript" data-rich-only aria-pressed="false">上标</button>
+    <button id="inline-code" data-rich-only>行内代码</button><button id="code-block" data-rich-only>代码块</button>
+    <button id="insert-table" data-rich-only>插入表格</button><button id="table-row" data-rich-only>表格加行</button><button id="remove-table" data-rich-only>移除表格</button>
+    <button data-command="insertHorizontalRule" data-rich-only>分隔线</button>
+    <button data-command="indent" data-rich-only>增加缩进</button><button data-command="outdent" data-rich-only>减少缩进</button>
+    <button data-command="unlink" data-rich-only>取消链接</button><button data-command="removeFormat" data-rich-only>清除格式</button>
+    <button id="insert-fold">折叠内容</button>
+    <span class="hint">图片支持粘贴、拖入；格式会随文章保存</span>
   </div>
   <div id="workspace" class="workspace rich-mode">
     <section id="rich-pane" aria-label="富文本编辑区">

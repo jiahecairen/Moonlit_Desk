@@ -22,6 +22,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let log: URL
     private var server: Process?
     private var timer: Timer?
+    private var appearance: StatusAppearance?
     private var isBackingUp = false
     private var nextRetry = Date.distantPast
     private var features: [any LauncherFeature] = []
@@ -66,13 +67,12 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        guard let button = statusItem.button else { return }
-        button.title = "Moonlit Desk"
-        button.toolTip = "Moonlit Desk Hexo"
+        appearance = StatusAppearance(item: statusItem, studio: studio, project: { [weak self] in self?.project })
+        appearance?.start()
         menu.delegate = self
         statusItem.menu = menu
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.runScheduledBackup() }
+            Task { @MainActor in self?.appearance?.refresh(); self?.runScheduledBackup() }
         }
         if project == nil {
             DispatchQueue.main.async { self.chooseProject() }
@@ -81,6 +81,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         timer?.invalidate()
+        appearance?.stop()
         features.forEach { $0.shutdown() }
         if server?.isRunning == true { server?.terminate() }
     }
@@ -94,6 +95,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        appearance?.refresh()
         menu.removeAllItems()
         info(project?.lastPathComponent ?? "请选择 Hexo 博客目录")
         add("选择博客目录…", #selector(chooseProject), enabled: !isBackingUp && !features.contains(where: { $0.isBusy }))
@@ -143,6 +145,9 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         menu.addItem(.separator())
+        let display = NSMenuItem(title: "月相与菜单栏显示…", action: #selector(StatusAppearance.showSettings), keyEquivalent: "")
+        display.target = appearance
+        menu.addItem(display)
         add("在 Finder 中打开博客目录", #selector(openProject), enabled: project != nil)
         if #available(macOS 13.0, *) {
             let login = add("登录时打开", #selector(toggleLogin))
@@ -207,6 +212,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if server?.isRunning == true { server?.terminate() }
         server = nil
         project = folder
+        appearance?.refresh()
         configureFeatures()
         defaults.removeObject(forKey: "lastBackup")
         nextRetry = .distantPast

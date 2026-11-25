@@ -7,7 +7,8 @@
     "editor": "node editor/server.js",
     "test": "node --test editor/*.test.js",
     "build:mac": "./mac-launcher/build.sh",
-    "configure": "node editor/configure.js"
+    "configure": "node editor/configure.js",
+    "test:mac": "./mac-launcher/test.sh"
   },
   "dependencies": {
     "dompurify": "3.5.0",

@@ -53,10 +53,27 @@ The menu supports starting and stopping Hexo, opening the editor, manual or
 scheduled whole-project backups, and launching at login. The local Hexo preview
 uses port 4000 and the editor uses port 4510.
 
+## Menu bar appearance and moon phase
+
+The menu bar shows only a live moon icon by default. **月相与菜单栏显示…** lets
+you add the app name or the current site's name, or replace the moon with a custom
+symbol. Changes persist across launches; site names follow `_config.yml` changes.
+
+Moon illumination follows the current time, including daytime and times when the
+Moon is below the horizon. System location adjusts the illuminated limb's angle
+for the observer. Allow macOS location access, or disable automatic location and
+enter latitude/longitude in the settings panel. If location is unavailable, the
+phase remains current with a standard orientation. Coordinates stay on this Mac.
+The compact icon uses approximate SunCalc astronomy formulas, not an observation
+of visibility or weather. See [third-party notices](THIRD_PARTY_NOTICES.md).
+
 ## Writing
 
-The default editor supports paragraphs, headings, bold, italic, lists, links,
-and images. Click **MD 编辑器** to edit the full Markdown source, including YAML
+Common controls stay visible: undo/redo, headings, bold, italic, underline, lists,
+links, and images. **高级** expands strikethrough, sub/superscript, inline and block
+code, tables (including adding rows and removing a table), separators, indentation,
+removing links/formatting, and optional folded content. Formatting buttons reflect
+the current selection. Rich-only controls are disabled in Markdown mode. Click **MD 编辑器** to edit the full Markdown source, including YAML
 front matter. Its label changes to **富文本编辑器**, which returns to rich-text mode.
 
 Opening an article or switching modes preserves the original source until you
@@ -147,3 +164,5 @@ Native process management and whole-project backups live in mac-launcher/.
 ## License
 
 MIT. See [LICENSE](LICENSE). Third-party dependencies retain their own licenses.
+
+On macOS, run `npm run test:mac` to verify moon illumination and observer orientation against SunCalc reference fixtures.
