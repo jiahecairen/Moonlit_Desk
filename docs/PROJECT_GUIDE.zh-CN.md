@@ -175,6 +175,7 @@ IP 缓存有效期 6 小时；失败重试间隔至少 1 小时。单次请求�
 - 使用 Apple Color Emoji 绘制，与 macOS 上网站的 Unicode 表情来源一致。
 - 图标必须 `isTemplate=false`；改为模板会在浅色菜单栏被系统染成黑色圆。
 - 输出为 22×22 逻辑点，表情字号 18，按本地观察角旋转；不是逐像素连续绘制终止线。
+- Finder／启动台的应用图标固定为 🌗 的高清透明 PNG 版本，先增强母图，再生成 ICNS，使用 CFBundleIconFile 指向 MoonlitDesk.icns，与菜单栏实时图标独立。
 - 编辑器标签中的月亮动画仍是每 1.5 秒循环，不是菜单栏的实时天文月相。
 
 ### 5.4 旧设置迁移
@@ -211,6 +212,7 @@ flowchart LR
 | `MoonIcon.swift` | 网站同款彩色 emoji，禁止模板染色 |
 | `Resources/zone.tab` | 离线时区代表城市坐标备用表 |
 | `build.sh` | 打包 Resources、编译 Swift、生成 plist、临时签名 |
+| `make-icon.swift` | 将高清透明月亮母图缩制成 16–1024 像素图标组，再由 iconutil 打包 ICNS |
 | `test.sh`、`tests/` | 月相与位置解析的独立可执行测试 |
 
 `LauncherFeature` 提供 `menuItems()`、`shutdown()` 与 `isBusy` 扩展点。它是编译期协议，不是已经实现的第三方插件加载器。新功能需编译进应用并在 configureFeatures 中注册。
@@ -411,7 +413,7 @@ OneDrive 由其客户端负责远程上传，工具只确认本地写入成功�
 1. 创建临时 .app 目录。
 2. 打包 editor 与当前全部 node_modules；复制第三方声明与 zone.tab。
 3. swiftc -swift-version 5 -O 编译本机架构。
-4. 写 org.moonlitdesk.app、LSUIElement 等 plist；目前版本号 1.1，build 2，npm 版本 1.0.0，尚未统一。
+4. 写 org.moonlitdesk.app、LSUIElement 等 plist；目前版本号 1.1，build 3，npm 版本 1.0.0，尚未统一。
 5. ad-hoc codesign，ditto 到目标目录。
 
 可传目标目录：`./mac-launcher/build.sh /absolute/output`。当前不是 Universal Binary、DMG 安装器或已公证发行版。Node/npm/git/gh 仍依赖系统环境；Finder 启动应用不会自动获得交互式 shell 的 nvm 环境。Node 查找主要覆盖 Homebrew 路径与已有 PATH。
@@ -490,6 +492,8 @@ git diff --check
 - 多站点：建立明确的站点集合、端口和进程归属模型，而不是重复启动全局固定端口。
 - 发布源码：设计独立的源码 Git 功能，不能把现有生成分支强行混用。
 - 成熟编辑器迁移：先为 HTML 嵌入、details、YAML 和表格建立样本集，再评估模型与转换兼容；保持现有文章可逆。
+
+应用图标母图为 `mac-launcher/Resources/AppIconMoon-HD.png`（1254×1254，带 Alpha），由内置 imagegen 基于用户指定表情增强。构建时只从母图缩制，不再把小截图或系统字体直接放大作为应用大图标；处理提示词记录见同目录 AppIconMoon-HD.prompt.md。菜单栏继续使用系统彩色表情，与此静态图标独立。
 
 ## 16. 外部依据与许可证
 

@@ -18,6 +18,9 @@ fi
 cp "$source_dir/Resources/zone.tab" "$bundle/Contents/Resources/zone.tab"
 cp "$studio_dir/THIRD_PARTY_NOTICES.md" "$bundle/Contents/Resources/THIRD_PARTY_NOTICES.md"
 
+swift "$source_dir/make-icon.swift" "$stage/MoonlitDesk.iconset" "$source_dir/Resources/AppIconMoon-HD.png"
+/usr/bin/iconutil -c icns "$stage/MoonlitDesk.iconset" -o "$bundle/Contents/Resources/MoonlitDesk.icns"
+
 swiftc -swift-version 5 -O "$source_dir/Services.swift" "$source_dir/EditorFeature.swift" "$source_dir/ProjectCreator.swift" "$source_dir/LunarPhase.swift" "$source_dir/MoonLocation.swift" "$source_dir/MoonIcon.swift" "$source_dir/StatusAppearance.swift" "$source_dir/main.swift" \
   -o "$bundle/Contents/MacOS/MoonlitDesk"
 /usr/bin/plutil -create xml1 "$bundle/Contents/Info.plist"
@@ -25,9 +28,10 @@ manifest="$bundle/Contents/Info.plist"
 /usr/bin/plutil -insert CFBundleIdentifier -string org.moonlitdesk.app "$manifest"
 /usr/bin/plutil -insert CFBundleName -string 'Moonlit Desk' "$manifest"
 /usr/bin/plutil -insert CFBundleExecutable -string MoonlitDesk "$manifest"
+/usr/bin/plutil -insert CFBundleIconFile -string MoonlitDesk.icns "$manifest"
 /usr/bin/plutil -insert CFBundlePackageType -string APPL "$manifest"
 /usr/bin/plutil -insert CFBundleShortVersionString -string 1.1 "$manifest"
-/usr/bin/plutil -insert CFBundleVersion -string 2 "$manifest"
+/usr/bin/plutil -insert CFBundleVersion -string 3 "$manifest"
 /usr/bin/plutil -insert LSUIElement -bool YES "$manifest"
 /usr/bin/plutil -insert MoonlitDeskPath -string "$studio_dir" "$manifest"
 /usr/bin/codesign --force --sign - "$bundle"

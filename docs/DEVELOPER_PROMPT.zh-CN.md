@@ -31,6 +31,7 @@
 三、技术架构
 - Swift AppKit 原生菜单栏：mac-launcher/main.swift、Services.swift、EditorFeature.swift、ProjectCreator.swift。
 - main.swift 中 LauncherFeature 是编译期扩展协议，不是动态插件平台。
+- Finder／启动台的应用图标固定 🌗，从 Resources/AppIconMoon-HD.png 高清透明母图用 make-icon.swift 缩制多尺寸 PNG，build.sh 用 iconutil 打包；CFBundleIconFile 必须设置。它与菜单栏图标独立。
 - 月相：LunarPhase.swift（SunCalc 近似公式）、MoonIcon.swift（Apple Color Emoji，isTemplate=false）、MoonLocation.swift（时区与 IP 数据解析）、StatusAppearance.swift（偏好与刷新）。
 - 新版已移除 CoreLocation 和定位权限 plist 键；保留旧偏好仅用于迁移。
 - Node HTTP 服务：editor/server.js，只监听 127.0.0.1，默认 4510。

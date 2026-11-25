@@ -1,0 +1,14 @@
+# Application moon icon asset
+
+Date: 2026-11-25. Generated with built-in image_gen, not the API/CLI fallback.
+Output: AppIconMoon-HD.png, 1254 × 1254 pixels, true alpha transparency.
+The file is an AI-enhanced reconstruction of the user-selected 🌗 emoji, with new lunar detail, not a lossless recovery of details from the small screenshot.
+The application build downsamples this master into the macOS iconset; the live menu bar still uses native emoji.
+
+## Restoration prompt
+
+Use case: precise-object-edit / high-resolution restoration and background extraction. Asset type: macOS application icon source, square high-resolution transparent PNG. Input image 1 is the user's edit target: a small screenshot containing a waning half-moon emoji; extract and restore ONLY this moon, removing all gray menu bar background and neighboring text. Input image 2 is a larger native rendering of the SAME moon emoji, provided solely to preserve identity, color, phase and crater layout. Make a genuinely high-definition master, preferably 2048x2048: accurately reconstruct fine lunar surface details, smooth round anti-aliased silhouette, natural detailed crater texture consistent with the reference emoji. Invariants: same upright circular moon, LEFT half warmly luminous golden yellow, RIGHT half visible deep navy-blue shadow, irregular nearly vertical central terminator matching the reference; do not change the phase or mirror it. Match the reference's Apple color emoji visual character, not a new cartoon redesign or a photograph of the sky. Center ONE moon, about 88% of canvas diameter, equal transparent margins, no square tile, no face, no stars, no text, no halo, no cast shadow outside the sphere, no checkerboard painted into the image. True alpha transparency outside the circle; crisp clean edges without colored stray pixels. Preserve the user's chosen emoji identity and enhance actual detail rather than merely enlarge the screenshot.
+
+## Edge refinement prompt
+
+Precise-object-edit. Edit ONLY the silhouette edge and surrounding alpha of this high-resolution moon icon master. Preserve the interior lunar crater texture, half-moon phase, golden yellow LEFT half and deep navy blue RIGHT half, size and centered composition exactly. Make the outer boundary one perfectly smooth clean circular anti-aliased edge. Remove ALL stray colored pixels, detached fragments, tiny red/yellow/blue artifacts and protrusions around the circle, especially the small red/yellow blob at 12 o'clock and yellow fringes at the left rim. Outside the smooth circle must be genuinely fully transparent with no glow or painted checkerboard. Do not add a background, tile, stars, text, face or external shadow. Maintain or increase resolution; this is the final macOS icon source. Do not soften the interior detail.
