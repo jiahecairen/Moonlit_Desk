@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Moonlit 🌗 Desk · 编辑器</title><link rel="stylesheet" href="/style.css"><script defer src="/editor-moon.js"></script><script defer src="/vendor/purify.js"></script><script defer src="/vendor/turndown.js"></script><script defer src="/vendor/gfm.js"></script><script defer src="/rich-editor.js"></script><script defer src="/app.js"></script></head>
+<body>
+<aside>
+  <header><a class="brand" id="blog-link" href="http://127.0.0.1:4000/" target="_blank" rel="noopener" aria-label="打开本地博客">Moonlit <span data-editor-moon aria-hidden="true">🌗</span> Desk</a><span id="site-name">文章编辑器</span></header>
+  <button id="new" class="primary">新建文章</button>
+  <input id="filter" type="search" placeholder="搜索文章与草稿" aria-label="搜索文章与草稿">
+  <nav id="articles" aria-label="文章列表"></nav>
+</aside>
+<main>
+  <header class="topbar"><div><h1 id="heading">开始写作</h1><p id="file-path">选择一篇文章，或新建一篇</p></div><div class="publish-actions"><button id="publish" disabled>发布到 GitHub</button><button id="save" class="primary" disabled>保存文章 <kbd>⌘S</kbd></button></div></header>
+  <div class="toolbar" role="toolbar" aria-label="编辑工具">
+    <button data-wrap="**" data-command="bold" title="加粗"><strong>粗体</strong></button>
+    <button data-wrap="*" data-command="italic" title="斜体"><em>斜体</em></button>
+    <select id="block-format" aria-label="段落样式"><option value="p">正文</option><option value="h2">标题 2</option><option value="h3">标题 3</option><option value="blockquote">引用</option></select>
+    <button data-command="insertUnorderedList">无序列表</button><button data-command="insertOrderedList">有序列表</button>
+    <button id="insert-link">链接</button><button id="insert-image">插入图片</button>
+    <input id="images" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
+    <span class="hint">可直接粘贴或拖入图片</span>
+    <button id="md-button" aria-pressed="false">MD 编辑器</button>
+  </div>
+  <div id="workspace" class="workspace rich-mode">
+    <section id="rich-pane" aria-label="富文本编辑区">
+      <article class="writing-paper">
+        <h2 id="paper-title">开始写作</h2>
+        <div id="rich-body" role="textbox" aria-label="文章正文" aria-multiline="true" aria-disabled="true" contenteditable="false" data-placeholder="在这里写下你的文章…"></div>
+      </article>
+    </section>
+    <section id="source-pane" class="source-pane" aria-label="Markdown 编辑区" hidden><textarea id="source" spellcheck="false" aria-label="文章 Markdown 源码" placeholder="在这里编辑 Markdown 和顶部配置。" disabled></textarea></section>
+  </div>
+  <footer><span id="status" role="status" aria-live="polite">正在连接…</span><span id="word-count"></span></footer>
+</main>
+<dialog id="new-dialog">
+<form id="new-form">
+<h2>新建文章</h2>
+<p class="hint-text">英文标题、中文标题和文件名，填写任意一项即可。</p>
+<p id="new-error" role="alert" hidden></p>
+<label>英文标题<input name="title" maxlength="180" placeholder="A new beginning"></label>
+<label>中文标题<input name="chinese" maxlength="180" placeholder="新的开始"></label>
+<label>文件名<input name="slug" maxlength="120" pattern="[A-Za-z0-9_-]+" placeholder="根据标题自动生成"><small id="slug-hint">留空自动生成，中文标题使用拼音和下划线</small></label>
+<label>保存位置<select name="zone"><option value="_drafts">草稿</option><option value="_posts">文章</option></select></label>
+<label class="checkbox-label"><input name="bilingual" type="checkbox">包含 Chinese version 双语区</label>
+<div class="dialog-actions"><button type="button" id="cancel-new">取消</button><button type="submit" class="primary">开始写作</button></div>
+</form>
+</dialog>
+</body></html>
