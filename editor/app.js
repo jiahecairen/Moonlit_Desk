@@ -9,6 +9,7 @@ let activeLoad = 0;
 let publishing = false;
 let publishTarget = "";
 let publishPoll;
+let autoSaveTimer, savePromise;
 const rich = new RichDocument($('#rich-body'), text => {
   if (!richMode || publishing) return;
   editor.value = text;
@@ -81,8 +82,13 @@ function jsonRequest(data) {
 
 function dirty() { return !!currentPath && editor.value !== savedText.replace(/\r\n?/g, '\n'); }
 async function canLeave() {
-  if (uploading || saving || publishing || metadataPending) { message('请等待图片上传或保存完成。'); return false; }
-  return !dirty() || await askConfirm('有尚未保存的修改，确定离开这篇文章吗？');
+  if (uploading || publishing) { message('请等待图片上传或保存完成。'); return false; }
+  clearTimeout(autoSaveTimer);
+  if (savePromise) await savePromise;
+  if (!await metadataQueue) return false;
+  if (dirty() && !await save()) return false;
+  if (dirty()) { message('正在自动保存…'); scheduleAutoSave(); return false; }
+  return true;
 }
 
 function renderList() {
@@ -113,8 +119,8 @@ function updateCount() {
 
 function changed() {
   updateCount();
-  message(dirty() ? '有未保存的修改' : '已保存');
-
+  message(dirty() ? '等待自动保存…' : '已保存');
+  scheduleAutoSave();
 }
 
 function setDocument(file, text, rev, title, isNew = false) {
@@ -145,21 +151,35 @@ async function openArticle(article) {
   } catch (error) { message(error.message, true); }
 }
 
-async function save() {
+function scheduleAutoSave() {
+  clearTimeout(autoSaveTimer);
+  if (!dirty()) return;
+  autoSaveTimer = setTimeout(() => { if (dirty()) save(); },1000);
+}
+function save() {
+  if (savePromise) return savePromise;
+  clearTimeout(autoSaveTimer);
+  savePromise = performSave().finally(() => { savePromise = null; });
+  return savePromise;
+}
+async function performSave() {
   if (!currentPath || saving || uploading || publishing) return false;
   if (!await metadataQueue) return false;
   saving = true;
   $('#save').disabled = true;
   const text = dirty() ? editor.value : savedText;
+  let success = false;
+  message('正在自动保存…');
   try {
     const result = await api('/api/article', jsonRequest({ path: currentPath, text, revision: currentRevision }));
     currentRevision = result.revision;
     savedText = text;
     message(dirty() ? '已保存，仍有新的修改' : result.backup.skipped ? '已保存 · 已有相同版本，跳过重复备份' : '已保存 · 已建立版本备份');
     await refreshList();
+    success = true;
     return true;
   } catch (error) { message(error.message, true); return false; }
-  finally { saving = false; $('#save').disabled = false; }
+  finally { saving = false; $('#save').disabled = false; if (success && dirty()) scheduleAutoSave(); }
 }
 
 function escapeHTML(text) {
@@ -255,6 +275,7 @@ async function uploadImages(files) {
       message('已插入 ' + reference.length + ' 张图片，请保存文章。' + (uploadError ? ' ' + uploadError : ''), !!uploadError);
     } else if (uploadError) message(uploadError, true);
     uploading = false;
+    if (dirty()) scheduleAutoSave();
   }
 }
 

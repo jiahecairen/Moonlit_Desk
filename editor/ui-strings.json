@@ -341,5 +341,13 @@
   " 保存前请在 MD 编辑器中修正顶部配置。": " Fix the front matter in Markdown mode before saving.",
   "找不到这个页面。": "Page not found.",
   "版本": "Version",
-  "构建": "Build"
+  "构建": "Build",
+  "编辑器": "Editor",
+  "语言已自动保存。": "Language saved automatically.",
+  "默认英文。选择后立即生效并自动保存，同步到编辑器和菜单栏，不会翻译文章内容。": "English by default. Choosing a language applies and saves it immediately across the editor and menu bar, without translating article content.",
+  "语言和启动方式。修改后自动生效。": "Language and startup preferences. Changes apply automatically.",
+  "等待自动保存…": "Waiting to autosave…",
+  "正在自动保存…": "Saving automatically…",
+  "已自动保存。": "Saved automatically.",
+  "请完成有效输入，随后会自动保存。": "Complete the required fields; valid changes are saved automatically."
 }

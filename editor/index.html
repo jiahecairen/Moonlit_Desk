@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Moonlit 🌗 Desk · 编辑器</title><link rel="stylesheet" href="/style.css"><script defer src="/ui-strings.js"></script><script defer src="/i18n.js"></script><script defer src="/editor-moon.js"></script><script defer src="/vendor/purify.js"></script><script defer src="/vendor/turndown.js"></script><script defer src="/vendor/gfm.js"></script><script defer src="/rich-editor.js"></script><script defer src="/app.js"></script><script defer src="/settings-ui.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Moonlit 🌗 Desk · 编辑器</title><link rel="stylesheet" href="/style.css"><script defer src="/ui-strings.js"></script><script defer src="/autosave.js"></script><script defer src="/i18n.js"></script><script defer src="/editor-moon.js"></script><script defer src="/vendor/purify.js"></script><script defer src="/vendor/turndown.js"></script><script defer src="/vendor/gfm.js"></script><script defer src="/rich-editor.js"></script><script defer src="/app.js"></script><script defer src="/settings-ui.js"></script></head>
 <body>
 <aside>
   <header><a class="brand" id="blog-link" href="http://127.0.0.1:4000/" target="_blank" rel="noopener" aria-label="打开本地博客">Moonlit <span data-editor-moon aria-hidden="true">🌗</span> Desk</a><span id="site-name">文章编辑器</span></header>
@@ -9,7 +9,7 @@
   <nav id="articles" aria-label="文章列表"></nav>
 </aside>
 <main>
-  <header class="topbar"><div><h1 id="heading">开始写作</h1><p id="file-path">选择一篇文章，或新建一篇</p></div><div class="publish-actions"><button id="publish" disabled>发布到 GitHub</button><button id="save" class="primary" disabled>保存文章 <kbd>⌘S</kbd></button></div></header>
+  <header class="topbar"><div><h1 id="heading">开始写作</h1><p id="file-path">选择一篇文章，或新建一篇</p></div><div class="publish-actions"><button id="publish" disabled>发布到 GitHub</button><button id="save" class="primary" disabled hidden>保存文章 <kbd>⌘S</kbd></button></div></header>
   <details id="article-properties">
     <summary>文章属性 · 标题、标签、分类与关键词</summary>
     <fieldset id="metadata-fields" disabled>

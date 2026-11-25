@@ -6,6 +6,8 @@ final class EditorFeature: NSObject, LauncherFeature {
     private let studio: URL
     private var process: Process?
     private var opening = false
+    private var requests = 0
+    var isBusy: Bool { opening || requests > 0 }
     private let address = URL(string: "http://127.0.0.1:4510/")!
 
     init(project: URL, studio: URL) {
@@ -50,6 +52,8 @@ final class EditorFeature: NSObject, LauncherFeature {
     }
 
     func request(path: String, payload: [String: Any]?) async throws -> Any {
+        requests += 1
+        defer { requests -= 1 }
         try await ensureReady()
         let (sessionData, _) = try await URLSession.shared.data(from: address.appendingPathComponent("api/session"))
         let session = try JSONSerialization.jsonObject(with: sessionData) as? [String: Any]

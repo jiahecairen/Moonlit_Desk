@@ -22,6 +22,12 @@ test('UI language defaults to English, switches to Chinese, and falls back safel
   ui.setLanguage('unsupported');
   assert.equal(ui.language, 'en');
   assert.equal(context.document.documentElement.lang, 'en');
+  context.window.MOONLIT_LANGUAGES.push({code:'fr',label:'Français',htmlLang:'fr',catalog:'fixture.json'});
+  context.window.MOONLIT_CATALOGS.fr = {'保存文章':'Enregistrer'};
+  ui.setLanguage('fr');
+  assert.equal(ui.t('保存文章'),'Enregistrer');
+  assert.equal(ui.t('新建文章'),'New Article','missing entries use English fallback');
+  assert.equal(context.document.documentElement.lang,'fr');
   const json = JSON.parse(fs.readFileSync(path.join(__dirname,'ui-strings.json'),'utf8'));
   assert.equal(JSON.stringify(context.window.MOONLIT_STRINGS),JSON.stringify(json),'Swift and browser dictionaries remain identical');
 });

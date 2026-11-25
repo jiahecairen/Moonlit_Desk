@@ -108,10 +108,10 @@ const server = http.createServer(async (request, response) => {
     }
     if (request.method === 'GET' && url.pathname === '/api/session') {
       const config = require('./project').projectConfig(root);
-      return send(response, 200, { token, project: path.basename(root), projectPath: root, articleBackups: backupFolder(root), siteTitle: config.title || path.basename(root), language: require('./project').settings().language === 'zh' ? 'zh' : 'en',
+      return send(response, 200, { token, project: path.basename(root), projectPath: root, articleBackups: backupFolder(root), siteTitle: config.title || path.basename(root), language: require('./ui-language').normalizeLanguage(require('./project').settings().language),
         repository: config.deploy?.repository || config.deploy?.repo, bilingual: !!require('./project').settings().bilingual, branch: config.deploy?.branch || 'remote default' });
     }
-    if (request.method === 'GET' && url.pathname === '/api/preferences') return send(response, 200, { language: require('./project').settings().language === 'zh' ? 'zh' : 'en' });
+    if (request.method === 'GET' && url.pathname === '/api/preferences') return send(response, 200, { language: require('./ui-language').normalizeLanguage(require('./project').settings().language) });
     if (request.method === 'GET' && url.pathname === '/api/settings') {
       const config = require('./configuration').readConfig(root).value;
       return send(response, 200, { site: { title: config.title || '', subtitle: config.subtitle || '', description: config.description || '', keywords: config.keywords || '' },
@@ -245,7 +245,7 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && Object.hasOwn(vendors, url.pathname)) {
       return send(response, 200, fs.readFileSync(path.join(__dirname, '../node_modules', vendors[url.pathname])), 'text/javascript; charset=utf-8');
     }
-    const assets = { '/ui-strings.js': ['ui-strings.js','text/javascript; charset=utf-8'], '/i18n.js': ['i18n.js','text/javascript; charset=utf-8'], '/settings-ui.js': ['settings-ui.js','text/javascript; charset=utf-8'], '/rich-editor.js': ['rich-editor.js','text/javascript; charset=utf-8'], '/editor-moon.js': ['editor-moon.js','text/javascript; charset=utf-8'], '/': ['index.html','text/html; charset=utf-8'], '/app.js': ['app.js','text/javascript; charset=utf-8'], '/style.css': ['style.css','text/css; charset=utf-8'] };
+    const assets = { '/autosave.js': ['autosave.js','text/javascript; charset=utf-8'], '/ui-strings.js': ['ui-strings.js','text/javascript; charset=utf-8'], '/i18n.js': ['i18n.js','text/javascript; charset=utf-8'], '/settings-ui.js': ['settings-ui.js','text/javascript; charset=utf-8'], '/rich-editor.js': ['rich-editor.js','text/javascript; charset=utf-8'], '/editor-moon.js': ['editor-moon.js','text/javascript; charset=utf-8'], '/': ['index.html','text/html; charset=utf-8'], '/app.js': ['app.js','text/javascript; charset=utf-8'], '/style.css': ['style.css','text/css; charset=utf-8'] };
     if (request.method === 'GET' && Object.hasOwn(assets, url.pathname)) {
       const [file, mime] = assets[url.pathname];
       return send(response, 200, fs.readFileSync(path.join(__dirname, file)), mime);

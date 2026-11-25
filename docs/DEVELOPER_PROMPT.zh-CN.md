@@ -13,7 +13,9 @@
 - 先读可用的 AGENTS.md 等工作区规则，再读 docs/HANDOFF.zh-CN.md、docs/PROJECT_GUIDE.zh-CN.md、README.md、package.json。
 - 交接文档状态日期为 2026-11-25；后续事实以源码、测试与 Git 当前状态为准。
 
-新增状态：当前版本 1.2.0 / build 4。
+新增状态：当前版本 1.2.0 / build 5。
+- 设置和文章自动保存，不得再把保存按钮作为生效门槛；语言是注册表驱动的下拉，选择立即生效并单独持久化，与登录项独立。错误、非法输入和 revision 冲突必须明确反馈。
+- 新增语言注册 editor/languages.json 与字典，运行 npm run i18n:generate；build 自动生成 ui-strings.js。不要在 Swift/Node/浏览器重新写死只支持 en/zh。
 - 默认英文，支持中文，语言存 settings.json 的 language=en/zh；不要翻译用户文章、标题、标签内容。
 - 左键菜单只放编辑器、文章、服务、备份等操作；右键菜单放 Settings、About、Quit。
 - 全部长期设置统一到带八分区侧边栏的原生窗口：SettingsWindow.swift + 本地 WKWebView + editor/preferences.*。
@@ -86,7 +88,7 @@
 - 如授权提交，用明确文件列表 stage，检查 diff，正常提交推送并验证远端；不要将 .app 和依赖提交。
 
 七、已知限制，修改相关模块前必须知道
-- 没有自动保存／崩溃恢复、完整版本恢复 UI、资源清理或备份保留策略。
+- 有基础自动保存，尚无崩溃恢复、完整版本恢复 UI、资源清理或备份保留策略。
 - 富文本复杂嵌套、任意 HTML 与跨文档撤销可能存在保真边界。
 - 发布复制源快照不具备跨文件事务；外部并发修改可能混合；草稿转正式发生在远端成功之前。
 - 发布根目录文件的白名单不覆盖所有自定义主题／插件配置。

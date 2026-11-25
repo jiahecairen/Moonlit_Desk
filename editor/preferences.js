@@ -3,6 +3,7 @@ const ui = window.MoonlitI18n;
 const $ = selector => document.querySelector(selector);
 const pending = new Map();
 let state, siteData, siteLoading, section = 'general';
+let languageSaving = false;
 window.settingsResponse = result => {
   const task = pending.get(result.id); if (!task) return;
   pending.delete(result.id); clearTimeout(task.timer);
@@ -17,7 +18,7 @@ function native(action, input = {}) {
     window.webkit.messageHandlers.settings.postMessage({ id, action, input });
   });
 }
-const api = (path, payload) => native('api', { path: 'api/' + path, ...(payload ? { payload } : {}) });
+const api = (path, payload) => native('api', { path: 'api/' + path, projectPath: state?.projectPath, ...(payload ? { payload } : {}) });
 function notice(text = '', error = false) { $('#notice').textContent = ui.t(text); $('#notice').classList.toggle('error', error); }
 function fields(form, data) {
   for (const [name, value] of Object.entries(data)) {
@@ -47,7 +48,7 @@ function updateState(data, initialize = false) {
     ui.setLanguage(state.language);
     fields($('#general-form'), state); fields($('#backups-form'), state); fields($('#appearance-form'), state);
     displayAppearanceFields();
-    for (const button of document.querySelectorAll('[data-language]')) button.setAttribute('aria-pressed',String(button.dataset.language === state.language));
+
   }
   $('#project-path').textContent = state.projectPath || ui.t('尚未选择博客');
   $('#backup-path').textContent = state.backupFolder || '—';
@@ -57,7 +58,7 @@ function updateState(data, initialize = false) {
   for (const control of document.querySelectorAll('[data-site-form] input, [data-site-form] select, [data-site-form] textarea, [data-site-form] button')) control.disabled = !state.projectPath;
   for (const control of document.querySelectorAll('[data-needs-project]')) control.disabled = !state.projectPath;
   for (const action of ['choose-project', 'create-project', 'choose-backup']) document.querySelector('[data-native="' + action + '"]').disabled = state.busy;
-  if (changedProject) { siteData = null; if (['site','taxonomy','github'].includes(section)) loadSite(); }
+  if (changedProject) { for (const id of ['site-form','deployment-form']) formSavers.get(id)?.cancelPending(); siteData = null; if (['site','taxonomy','github'].includes(section)) loadSite(); }
 }
 window.showSettingsSection = async value => {
   if (!document.getElementById('section-' + value)) value = 'general';
@@ -77,26 +78,84 @@ for (const button of document.querySelectorAll('[data-native]')) button.addEvent
   catch (error) { notice(error.message, true); }
   finally { button.disabled = false; }
 });
-for (const [id, action] of [['general-form','save-general'],['backups-form','save-backups'],['appearance-form','save-appearance']]) {
-  $('#' + id).addEventListener('submit', async event => {
-    event.preventDefault();
-    const form = event.target, button = form.querySelector('[type=submit]'); button.disabled = true;
-    try {
-      const data = formData(form);
-      if (id === 'general-form') data.launchAtLogin = form.elements.launchAtLogin.checked;
-      if (id === 'backups-form') data.backupHours = Number(data.backupHours);
-      updateState(await native(action, data));
-      ui.setLanguage(state.language);
-      $('#language-badge').textContent = ui.language === 'zh' ? '简体中文' : 'English';
-      $('#page-title').textContent = document.querySelector('[data-section="' + section + '"]').textContent;
-      notice('设置已保存。');
-    } catch (error) { notice(error.message, true); }
-    finally { button.disabled = false; }
+const formSavers = new Map();
+function installAutoForm(id, write) {
+  const form = $('#' + id);
+  const queue = new AutoSaveQueue(async job => {
+    if (!state || !form.checkValidity()) return false;
+    if (['site-form','deployment-form'].includes(id) && job.projectPath !== state.projectPath) return false;
+    return write(job.data);
+  }, {delay:700,onState(status,error) {
+    if (status === 'pending') notice('等待自动保存…');
+    if (status === 'saving') notice('正在自动保存…');
+    if (status === 'saved') notice('已自动保存。');
+    if (status === 'waiting') notice('请完成有效输入，随后会自动保存。');
+    if (status === 'error') notice(error.message,true);
+  }});
+  formSavers.set(id,queue);
+  function snapshot() {
+    if (!state) return;
+    if (id === 'appearance-form') displayAppearanceFields();
+    const data = formData(form);
+    if (id === 'general-form') { data.launchAtLogin = form.elements.launchAtLogin.checked; delete data.language; }
+    if (id === 'backups-form') data.backupHours = Number(data.backupHours);
+    if (id === 'deployment-form') data.githubPages = form.elements.githubPages.checked;
+    queue.schedule({data,projectPath:state.projectPath});
+  }
+  form.addEventListener('input', event => { if (event.target.name !== 'language') snapshot(); });
+  form.addEventListener('change', event => {
+    if (event.target.name === 'language') return;
+    snapshot(); queue.flush();
   });
+  form.addEventListener('submit', event => { event.preventDefault(); snapshot(); queue.flush(); });
 }
-for (const button of document.querySelectorAll('[data-language]')) button.addEventListener('click', () => {
-  $('#general-form').elements.language.value = button.dataset.language;
-  for (const option of document.querySelectorAll('[data-language]')) option.setAttribute('aria-pressed',String(option === button));
+installAutoForm('general-form', async data => {
+  try { updateState(await native('save-general',data)); }
+  catch(error) {
+    const field = $('#general-form').elements.launchAtLogin;
+    if (field.checked === data.launchAtLogin) field.checked = state.launchAtLogin;
+    throw error;
+  }
+});
+installAutoForm('backups-form', async data => updateState(await native('save-backups',data)));
+installAutoForm('appearance-form', async data => updateState(await native('save-appearance',data)));
+installAutoForm('site-form', async data => {
+  if (!state.projectPath || !siteData) return false;
+  await api('site',data); siteData.site = data;
+});
+installAutoForm('deployment-form', async data => {
+  if (!state.projectPath || !siteData) return false;
+  // Wait for an owner/repository (or URL) and branch instead of saving partial input.
+  if (!/^(?:https:\/\/github\.com\/|git@github\.com:)?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?\/?$/.test(data.repository || '') || !data.branch?.trim()) return false;
+  await api('deployment',data); siteData.deployment = data;
+});
+function flushSettings() { return Promise.all([...formSavers.values()].map(queue => queue.flush())); }
+window.flushAllSettings = flushSettings;
+window.addEventListener('blur',flushSettings);
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushSettings(); });
+function renderLanguage(value) {
+  ui.setLanguage(value);
+  $('#language-badge').textContent = ui.languages.find(language => language.code === ui.language)?.label || 'English';
+  $('#page-title').textContent = document.querySelector('[data-section="' + section + '"]').textContent;
+  if (state) $('#app-version').textContent = ui.t('版本') + ' ' + state.version + ' · ' + ui.t('构建') + ' ' + state.build;
+}
+$('#language-select').replaceChildren(...ui.languages.map(language => new Option(language.label, language.code)));
+$('#language-select').addEventListener('change', async event => {
+  if (!state || languageSaving) return;
+  const select = event.target, previous = state.language;
+  const value = select.value;
+  languageSaving = true; select.disabled = true;
+  renderLanguage(value);
+  try {
+    updateState(await native('save-language', {language:value}));
+    renderLanguage(state.language);
+    select.value = state.language;
+    notice('语言已自动保存。');
+  } catch (error) {
+    select.value = previous;
+    renderLanguage(previous);
+    notice(error.message, true);
+  } finally { languageSaving = false; select.disabled = false; }
 });
 $('#appearance-form').addEventListener('change', displayAppearanceFields);
 $('#login-settings').addEventListener('click', () => native('login-settings').catch(error => notice(error.message, true)));
@@ -126,26 +185,12 @@ async function loadSite(force = false) {
 }
 $('#taxonomy-kind').addEventListener('change', renderTaxonomy);
 $('#reload-github').addEventListener('click', () => loadSite(true));
-$('#site-form').addEventListener('submit', async event => {
-  event.preventDefault(); const button = event.target.querySelector('[type=submit]'); button.disabled = true;
-  try { await api('site', formData(event.target)); siteData.site = formData(event.target); notice('网站信息已保存。'); }
-  catch(error) { notice(error.message, true); }
-  finally { button.disabled = false; }
-});
-$('#deployment-form').addEventListener('submit', async event => {
-  event.preventDefault(); const button = event.target.querySelector('[type=submit]'); button.disabled = true;
-  try {
-    const data = formData(event.target); data.githubPages = event.target.elements.githubPages.checked;
-    await api('deployment', data); siteData.deployment = data; notice('发布目标已保存。');
-  } catch(error) { notice(error.message, true); }
-  finally { button.disabled = false; }
-});
 $('#create-repository').addEventListener('click', async () => {
   const data = formData($('#deployment-form'));
   if (!data.repository) return notice('请先填写 owner/repository。', true);
   if (!await confirmAction(ui.t('创建 GitHub 仓库：') + data.repository + '\n' + ui.t(data.visibility === 'private' ? '可见性：私有' : '可见性：公开'))) return;
   const button = $('#create-repository'); button.disabled = true; notice('正在创建 GitHub 仓库…');
-  try { const result = await api('repository', data); $('#deployment-form').elements.repository.value = result.repository; notice('仓库已创建。请保存发布设置。'); }
+  try { const result = await api('repository', data); $('#deployment-form').elements.repository.value = result.repository; formSavers.get('deployment-form').schedule({data:{...formData($('#deployment-form')),githubPages:$('#deployment-form').elements.githubPages.checked},projectPath:state.projectPath}); await formSavers.get('deployment-form').flush(); }
   catch(error) { notice(error.message, true); }
   finally { button.disabled = false; }
 });
@@ -163,7 +208,7 @@ for (const button of document.querySelectorAll('[data-taxonomy]')) button.addEve
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     ui.bindDOM(); updateState(await native('state'), true);
-    $('#language-badge').textContent = ui.language === 'zh' ? '简体中文' : 'English';
+    renderLanguage(state.language);
     window.showSettingsSection(section);
     setInterval(async () => { try { updateState(await native('state')); } catch {} }, 4000);
   } catch(error) { notice(error.message, true); }

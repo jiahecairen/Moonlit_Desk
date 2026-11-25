@@ -8,7 +8,8 @@
     "test": "node --test editor/*.test.js",
     "build:mac": "./mac-launcher/build.sh",
     "configure": "node editor/configure.js",
-    "test:mac": "./mac-launcher/test.sh"
+    "test:mac": "./mac-launcher/test.sh",
+    "i18n:generate": "node editor/generate-i18n.js"
   },
   "dependencies": {
     "dompurify": "3.5.0",

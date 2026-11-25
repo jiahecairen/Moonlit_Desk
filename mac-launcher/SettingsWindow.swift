@@ -2,7 +2,7 @@ import AppKit
 import WebKit
 
 @MainActor
-final class SettingsWindow: NSWindowController, WKScriptMessageHandler, WKNavigationDelegate {
+final class SettingsWindow: NSWindowController, WKScriptMessageHandler, WKNavigationDelegate, NSWindowDelegate {
     private let webView: WKWebView
     private let folder: URL
     private let handle: (String, [String: Any]) async throws -> Any
@@ -21,6 +21,7 @@ final class SettingsWindow: NSWindowController, WKScriptMessageHandler, WKNaviga
         window.center()
         window.isReleasedWhenClosed = false
         super.init(window: window)
+        window.delegate = self
         configuration.userContentController.add(self, name: "settings")
         webView.navigationDelegate = self
         webView.loadFileURL(folder.appendingPathComponent("preferences.html"), allowingReadAccessTo: folder)
@@ -35,6 +36,14 @@ final class SettingsWindow: NSWindowController, WKScriptMessageHandler, WKNaviga
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
         selectSection()
+    }
+
+    func flushPendingSettings() async {
+        _ = try? await webView.callAsyncJavaScript("await window.flushAllSettings?.()", arguments: [:], in: nil, contentWorld: .page)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        Task { await flushPendingSettings() }
     }
 
     private func selectSection() {

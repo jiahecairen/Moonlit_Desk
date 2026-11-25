@@ -64,8 +64,8 @@ uses port 4000 and the editor uses port 4510.
 Moonlit Desk defaults to English. Right-click (or Control-click) the menu bar icon
 and choose **Settings…**. A single sidebar window contains General, Blog & Folders,
 Backups, Moon & Appearance, Website, Tags & Categories, GitHub Publishing, and About.
-Choose **简体中文** in General to use Chinese; the menu bar and open editors follow
-the saved language. Article text, titles, and taxonomy names are not translated.
+Choose **简体中文** from the language dropdown in General to switch immediately.
+The choice is saved automatically; the menu bar and open editors follow it. Article text, titles, and taxonomy names are not translated.
 
 Left-click the icon for writing actions: open the editor, new article, start/stop
 Hexo, open the blog, back up now, and open folders or logs. Configuration controls
@@ -90,6 +90,23 @@ position. Unknown zones retain the current phase with a standard orientation.
 The icon uses the same eight color moon emoji as the website.
 The compact icon uses approximate SunCalc astronomy formulas, not an observation
 of visibility or weather. See [third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Automatic saving
+
+Settings apply automatically: switches and dropdowns on change, text fields after
+a short pause or when leaving the field. There are no Save buttons. Incomplete or
+invalid values wait for valid input; failures remain visible. Language saving is
+independent of launch-at-login permissions.
+
+Articles save and create a deduplicated version backup about one second after
+typing stops. Switching articles flushes pending changes. Cmd/Ctrl+S can still
+flush immediately. Invalid front matter, revision conflicts, or backup failures
+prevent overwriting the original article and display an error. Publishing and
+creating repositories remain explicit actions.
+
+To add a language, register its native name, HTML language code, and JSON catalog
+in `editor/languages.json`, then run `npm run i18n:generate`. Browser and Swift
+read the same registry; untranslated entries fall back to English.
 
 ## Writing
 

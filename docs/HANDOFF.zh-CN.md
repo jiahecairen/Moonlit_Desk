@@ -1,6 +1,6 @@
 # Moonlit Desk 开发交接文档
 
-交接日期：2026-11-25；当前版本 1.2.0，build 4。
+交接日期：2026-11-25；当前版本 1.2.0，build 5。
 
 本文用于让另一位开发者或 AI 在没有聊天记录的情况下继续维护。完整原理、API 和路径字典见 [项目说明](PROJECT_GUIDE.zh-CN.md)；可复制的任务提示词见 [开发提示词](DEVELOPER_PROMPT.zh-CN.md)。
 
@@ -17,6 +17,14 @@
 已实际检查英文默认设置、中文切换、切回英文保存、Website 现有字段加载和 About；语言只改 UI，不改用户正文。曾发现只切语言也注销登录项的错误，现已修成仅在状态变化时调用系统服务。系统登录项实际开启／关闭仍受 macOS 许可影响，不用来回切换测试用户真实自启动偏好。
 
 语言文件为 ui-strings.json（Swift 读取）与 ui-strings.js（浏览器读取），内容必须一致；i18n.js 负责 UI，勿对整个用户文章 DOM 运行通用翻译器。Node 增加只读 /api/preferences，编辑器轮询并在重新聚焦时更新。
+
+### 自动生效更新（build 5）
+
+所有设置去掉 Save，文字防抖约 700ms，开关／下拉 change 后生效。语言变成注册表驱动的下拉，立即渲染并以 save-language 独立持久化，不调用登录项 API。文章停止输入约 1s 自动保存及去重备份，切换文章先冲刷，保留 YAML、revision、备份失败阻止覆盖的保护。
+
+新增 autosave.js / autosave.test.js、languages.json、generate-i18n.js、ui-language.js。新增语言只加注册条目和字典，再运行 npm run i18n:generate；build 自动生成 JS 词典包。已在隔离博客验证未按保存按钮输入、自动备份、刷新并重新打开正文。
+
+设置旧项目的待写入项须在切换时取消，桥 api 请求携带 projectPath 并由原生核对，防止防抖中的旧表单写到新博客。错误应显示真实状态，不能用“已自动保存”掩盖未完成或失败的输入。
 
 ## 1. 接手时最重要的事实
 
@@ -103,7 +111,7 @@ git diff --check
 
 截至本次交付，执行了：
 
-- Node 测试三组，覆盖多条断言；全部通过。
+- Node 测试五组，覆盖多条断言；全部通过。
 - Swift 月相参考数据测试，通过。
 - Swift 位置解析、未知时区、南北半球、IP 响应校验测试，通过。
 - 原生应用重新编译、临时签名与资源打包，成功。
@@ -188,7 +196,7 @@ git diff --check
 
 - 成熟富文本编辑器是否替换 contenteditable，需要迁移试验而非直接重写。
 - 可配置端口与多站点集合。
-- 自动保存／本地 crash recovery。
+- 自动保存的本地 crash recovery 与失败草稿恢复。
 - 更多语言、版本号统一、签名公证、DMG、自动更新。
 - CI：Node 在隔离 runner，Swift 在 macOS runner，避免测试访问个人数据。
 - 升级旧依赖，先兼容测试而非一键全量 npm update。

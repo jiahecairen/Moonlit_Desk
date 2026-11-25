@@ -186,8 +186,12 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func handleSettings(_ action: String, _ input: [String: Any]) async throws -> Any {
         switch action {
         case "state": return settingsState()
+        case "save-language":
+            guard let language = input["language"] as? String, L10n.supportedCodes.contains(language) else { throw settingError("设置无效。") }
+            var config = StudioSettings.load(); config["language"] = language; try StudioSettings.save(config)
+            settingsWindow?.window?.title = "Moonlit Desk — " + L10n.text("设置")
+            appearance?.refresh()
         case "save-general":
-            guard let language = input["language"] as? String, ["en", "zh"].contains(language) else { throw settingError("设置无效。") }
             if #available(macOS 13.0, *), let enabled = input["launchAtLogin"] as? Bool {
                 let current = SMAppService.mainApp.status == .enabled || SMAppService.mainApp.status == .requiresApproval
                 if enabled != current {
@@ -195,9 +199,6 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     else { try await SMAppService.mainApp.unregister() }
                 }
             }
-            var config = StudioSettings.load(); config["language"] = language; try StudioSettings.save(config)
-            settingsWindow?.window?.title = "Moonlit Desk — " + L10n.text("设置")
-            appearance?.refresh()
         case "save-backups":
             guard let hours = input["backupHours"] as? Int, [0, 24, 168].contains(hours) else { throw settingError("设置无效。") }
             defaults.set(hours, forKey: "backupHours"); runScheduledBackup()
@@ -214,6 +215,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let path = input["path"] as? String,
                   ["api/settings", "api/site", "api/taxonomy", "api/deployment", "api/repository"].contains(path),
                   let editor = editorFeature else { throw settingError("请先在设置中连接博客") }
+            guard input["projectPath"] as? String == project?.path else { throw settingError("编辑器项目不匹配。") }
             let payload = input["payload"] as? [String: Any]
             if !["api/settings", "api/taxonomy"].contains(path) && payload == nil { throw settingError("设置无效。") }
             return try await editor.request(path: path, payload: payload)
@@ -321,7 +323,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func openDestination() {
         if let destination { NSWorkspace.shared.open(destination) }
     }
-    @objc private func quit() { NSApp.terminate(nil) }
+    @objc private func quit() { Task { await settingsWindow?.flushPendingSettings(); NSApp.terminate(nil) } }
 
     @objc private func chooseDestination() {
         let panel = NSOpenPanel()

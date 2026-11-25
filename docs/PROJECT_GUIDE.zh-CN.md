@@ -1,12 +1,12 @@
 # Moonlit Desk 完整项目说明
 
-维护日期：2026-11-25；当前版本 1.2.0（build 4）。本文说明的是当前仓库实现，不把未来规划写成已有功能。
+维护日期：2026-11-25；当前版本 1.2.0（build 5）。本文说明的是当前仓库实现，不把未来规划写成已有功能。
 
 阅读入口：[交接文档](HANDOFF.zh-CN.md) · [开发提示词](DEVELOPER_PROMPT.zh-CN.md) · [英文 README](../README.md)。
 
 ## 最新界面入口：统一设置与双语
 
-应用默认英文，保存 `language=zh` 后切换简体中文。原生菜单、设置窗口、编辑器按钮和常见提示共用翻译词典；文章文本、标题、标签名称不自动翻译。
+应用默认英文，从下拉框选择简体中文后立即切换并自动保存 `language=zh`。原生菜单、设置窗口、编辑器按钮和常见提示共用翻译词典；文章文本、标题、标签名称不自动翻译。
 
 - **左键单击菜单栏图标**：打开编辑器、新建文章、启动／停止 Hexo、打开博客、立即备份、打开备份／博客目录、查看日志。
 - **右键单击／Control-click**：Settings…、About Moonlit Desk、Quit。
@@ -60,7 +60,7 @@ Moonlit Desk 是独立的 macOS 菜单栏工具，加一个本地浏览器文章
 - 编辑标题、第二语言标题、日期、标签、分类及关键词。
 - 新文章任填英文标题、中文标题或文件名之一；有英文时自动生成短横线文件名，否则中文转拼音并以下划线连接。
 - 自定义折叠区域标题；编辑时展开，序列化到网站时默认收起。
-- 保存快捷键为 Cmd+S / Ctrl+S；没有后台自动保存。
+- 停止输入约 1 秒后自动保存并备份；Cmd+S / Ctrl+S 可立即冲刷，界面不要求点击保存。
 
 ### 2.3 网站及发布
 
@@ -120,7 +120,7 @@ npm start -- --project /absolute/path/to/hexo-blog
 
 ### 4.3 写文章
 
-“新建文章”不立即写磁盘；开始写作后第一次保存才落盘。默认保存位置是草稿。手工文件名只允许英文、数字、`-`、`_`，最长 120 字符，优先于自动生成。标题最长 180 字符。
+“新建文章”表单阶段不写磁盘；点击开始写作后，约 1 秒首次自动保存草稿。默认保存位置是草稿。手工文件名只允许英文、数字、`-`、`_`，最长 120 字符，优先于自动生成。标题最长 180 字符。
 
 新文章不会自动生成 Chinese version，也没有自动翻译。第二语言标题字段写入 `title_zh`，它并不自动实现网站语言路由。
 
@@ -147,7 +147,7 @@ npm start -- --project /absolute/path/to/hexo-blog
 2. Settings → GitHub Publishing 填写目标 `owner/repository` 或 GitHub URL。
 3. 指定部署分支，建议专用分支如 `gh-pages`。
 4. 填写网站公开 URL。项目 Pages URL 应含 `/repository/` 路径。
-5. 如需要，可以创建仓库并保存目标配置。
+5. 有效的目标配置会自动保存；如需要，可点击创建仓库。
 6. 点击发布，确认范围：生成并推送整个已保存的网站，而不仅是当前文章。
 7. 当前草稿会转入 `_posts`；失败后不会自动搬回草稿。
 8. 可选 Pages 配置发生在 push 之后，API 失败会报告“已推送但 Pages 配置失败”。
@@ -267,13 +267,13 @@ settings HTML/JS 加载自 app 的 Resources/editor，不能作为公网设置�
 
 调用格式为 `{id, action, input}`，经 `window.webkit.messageHandlers.settings.postMessage` 送到 Swift，再以 `window.settingsResponse({id,data})` 或 `{id,error}` 返回。页面为请求设置 200 秒超时；所有用户输入经 JSON 序列化回传，不拼接可执行脚本内容。
 
-支持的 action：state、save-general、save-backups、save-appearance、choose-project、create-project、choose-backup、open-backup、open-project、login-settings、open-editor、open-repository，以及 api。
+支持的 action：state、save-language、save-general、save-backups、save-appearance、choose-project、create-project、choose-backup、open-backup、open-project、login-settings、open-editor、open-repository，以及 api。
 
 api 只允许 api/settings、api/site、api/taxonomy、api/deployment、api/repository。`EditorFeature` 确认匹配当前项目的服务已启动，读取 token，再以正确 Origin 调本地接口。不允许通过桥任意访问路径／执行 shell。没有项目时，网站相关设置显示先连接博客的提示。
 
 通用设置的登录项只在 checkbox 与实际状态不一致时才调用 ServiceManagement；单独切换语言不应产生注册／注销操作。语言保存后更新窗口标题与菜单；编辑器每 2.5 秒，以及窗口 focus / visibilitychange 时读取 /api/preferences。
 
-JSON 是主词典，ui-strings.js 是浏览器用的同内容副本，测试检查两者一致。编辑器初始静态 UI 文本记录原文，语言切换仅更新 UI 节点、属性和特定状态节点，排除文章正文、文章列表用户标题等内容。
+`languages.json` 是语言注册表，条目为 code / label / htmlLang / catalog；当前 en 指向 ui-strings.json，zh 使用中文原文。`generate-i18n.js` 生成 ui-strings.js 的注册表与词典包，build.sh 自动生成，也可 npm run i18n:generate。新增语言只需添加条目及中文键到目标语言的 JSON 词典；缺失键回退英文，未知 code 回退 en。Swift、Node 和浏览器读取同一注册表，避免固定两个语言按钮。编辑器初始静态 UI 文本记录原文，语言切换仅更新 UI 节点、属性和特定状态节点，排除文章正文、文章列表用户标题等内容。
 
 ## 7. 本地数据与配置字典
 
@@ -293,7 +293,7 @@ JSON 是主词典，ui-strings.js 是浏览器用的同内容副本，测试检�
 | projectPath | 当前 Hexo 根目录，必须存在两个配置文件 |
 | backupFolder | 整站备份目标；文章备份在其下按站点隔离 |
 | articleBackupPath | 兼容旧版本，且项目匹配时使用的直接文章目标；切换项目／目标时清除 |
-| language | en 默认、zh；由设置通用分区保存，编辑器通过只读 API 同步 |
+| language | 注册表中的语言 code，en 默认；下拉框选择后独立自动保存，编辑器通过只读 API 同步 |
 | bilingual | 遗留兼容键，session 返回；不再决定新文章插入翻译区 |
 
 Swift 保存 JSON 为原子写，权限 0600；CLI configure 使用临时文件 rename。不要将该 JSON 提交到工具仓库。
@@ -382,6 +382,17 @@ GET 接口也只接受正确 Host。所有非 GET 请求需要 `Origin: http://1
 
 常见错误：400 输入不合法，403 Origin/token/Host 错误，404 路径不存在，409 外部修改或发布冲突，503 备份失败。未分类异常以 500 和通用权限提示返回，排查时需看日志／进程输出。
 
+## 8.1 自动生效与保存调度
+
+- 设置窗口不再有保存按钮。开关／下拉在 change 时保存，文字在 input 后约 700 ms 或 change/blur 时保存。
+- `AutoSaveQueue` 合并连打输入，串行处理同一表单的写入，保留写入期间的新修改；错误显式显示，不虚报成功。
+- 通用保存只处理登录项；语言走 save-language，选择立即预览、独立持久化，失败回退之前的选择。
+- 表单无效时等待完整输入，例如空标题、未填坐标的手动位置、未完成的仓库路径。最后有效配置保持不变。
+- 切换博客会取消旧网站／部署表单的待写入项；桥请求携带 projectPath，原生端核对当前项目。EditorFeature 的忙碌标记覆盖原生桥请求，防止写入期间切换目标。
+- 关闭设置窗口／经菜单退出时请求冲刷队列。发布、创建仓库、标签的新增／重命名／删除仍是明确操作按钮，并无额外保存步骤。
+- 文章正文、Markdown、格式、图片引用、已提交的文章属性修改在停止输入约 1 秒后自动保存并版本备份；切换文章先冲刷，保存中产生的新输入会接着保存。
+- 文章 API 的 YAML/title 验证、revision 冲突和备份失败保护保持原样；失败状态不自动循环重试，继续编辑或 Cmd/Ctrl+S 可以再次尝试。
+
 ## 9. 保存与转换机制
 
 ### 9.1 revision 与落盘
@@ -444,7 +455,7 @@ OneDrive 由其客户端负责远程上传，工具只确认本地写入成功�
 1. 创建临时 .app 目录。
 2. 打包 editor 与当前全部 node_modules；复制第三方声明与 zone.tab。
 3. swiftc -swift-version 5 -O 编译本机架构。
-4. 写 org.moonlitdesk.app、LSUIElement 等 plist；当前 App 与 npm 版本均为 1.2.0，App build 为 4。
+4. 写 org.moonlitdesk.app、LSUIElement 等 plist；当前 App 与 npm 版本均为 1.2.0，App build 为 5。
 5. ad-hoc codesign，ditto 到目标目录。
 
 可传目标目录：`./mac-launcher/build.sh /absolute/output`。当前不是 Universal Binary、DMG 安装器或已公证发行版。Node/npm/git/gh 仍依赖系统环境；Finder 启动应用不会自动获得交互式 shell 的 nvm 环境。Node 查找主要覆盖 Homebrew 路径与已有 PATH。
@@ -486,6 +497,7 @@ git diff --check
 ```
 
 - `editor/workflow.test.js`：临时博客、HTTP 保存、命名、重复备份、图片备份、revision 冲突、备份失败不覆盖、临时 bare Git 远端发布、保留无关文件、无变化跳过、空远端首次推送、错误远端失败。
+- `editor/autosave.test.js`：输入合并、写入中新编辑排队、错误和有效输入恢复、取消旧项目待写入项。
 - `editor/localization.test.js`：默认英文、切换中文、未知语言回退、Swift/浏览器词典一致；HTTP workflow 同时检查保存偏好后只读接口更新。
 - `editor/metadata.test.js`：front matter/body 保留、标签／分类／关键词批处理、版本备份、配置注释、部署 root。
 - `LunarPhaseTests.swift`：SunCalc 固定参考数据、新月／满月、北半球／南半球朝向、位置缺失回退。
@@ -499,7 +511,7 @@ git diff --check
 这些是交接时应保留的信息，不表示本次全部修复：
 
 1. 编辑器是 contenteditable + 浏览器命令，复杂嵌套、任意 HTML、Word 样式和完整主题不能保证保真；没有成熟编辑器文档模型或跨文档撤销栈设计。
-2. 保存为手动操作；未保存时有离开提醒，但崩溃、浏览器清理或断电仍可能丢失内存修改。
+2. 已有基础自动保存，但尚无崩溃恢复；防抖期间的尾部输入、非法 YAML 或写入错误仍可能让内存修改未落盘，离开页面时保留提醒。
 3. 没有文章删除／文件移动／重命名 UI，没有内置版本恢复、预览版本 diff 或备份保留策略。
 4. 修改来源目录、配置或主题后，现有 Node 进程的部分值需要重启；并非所有设置都热加载。
 5. 多进程同时保存／发布没有跨进程锁。taxonomy 的回滚是尽力而为，不能覆盖所有断电／并发情况。
