@@ -10,7 +10,7 @@
 
 - **左键单击菜单栏图标**：打开编辑器、新建文章、启动／停止 Hexo、打开博客、立即备份、打开备份／博客目录、查看日志。
 - **右键单击／Control-click**：Settings…、About Moonlit Desk、Quit。
-- **设置窗口**采用原生 NSWindow + 本地 WKWebView，具有通用、博客与目录、备份、月相与显示、网站信息、标签与分类、GitHub 发布、关于八个侧边栏分区。
+- **设置窗口**采用原生 NSWindow + 本地 WKWebView，具有通用、博客与目录、备份、月相与显示、网站信息、标签与分类、GitHub 发布、AI 写作、关于九个侧边栏分区。
 - 所有长期配置均进入此窗口；编辑器只保留文章本身的属性面板。编辑器 Settings 按钮通过 `moonlitdesk://settings` 打开同一窗口，不再弹旧网站设置对话框。
 - 首次未连接博客时打开设置的博客分区；选择目录、创建站点和备份目标的文件选择框仍由用户点击触发。
 - 只运行 Node 但未安装注册 macOS 应用时，仍可编辑文章；统一原生设置入口不可用，必要时通过博客配置文件／configure CLI 配置。
@@ -245,6 +245,12 @@ flowchart LR
 | `configuration.js` | 保留注释的 Hexo 配置写入、GitHub repo / Pages 配置 |
 | `publisher.js` | 临时快照、构建、Git checkout、生成清单、push |
 | `command.js` | 无 shell spawn、PATH 补充、超时、输出尾部、禁交互凭据 |
+| `ai/config.js` | AI 配置文件、仅允许本机地址、AI 数据目录与原子写 |
+| `ai/provider.js` | OpenAI 兼容客户端：models、chat（含流式）、embeddings，过滤 `<think>` |
+| `ai/corpus.js` | 文章清洗、段落切分、增量索引、关键词（字二元组 BM25）或向量检索 |
+| `ai/style.js` | 风格统计、跨时间抽样、模型生成风格说明、风格档案读写 |
+| `ai/polish.js` | 分批、提示词、输出清理、事实保真检查 |
+| `ai/routes.js` | `/api/ai/*` 路由与流式润笔 |
 
 ### 6.3 浏览器文件
 
@@ -254,7 +260,8 @@ flowchart LR
 | `style.css` | 编辑器配色、纸张区、工具栏和响应式 |
 | `app.js` | 当前文档状态、载入／保存／发布、模式切换、图片与工具栏 |
 | `settings-ui.js` | 文章属性队列与目录选项；Settings 按钮打开原生统一设置 |
-| `preferences.html/.css/.js` | 八分区设置页面，使用受限原生消息桥访问偏好和网站配置 |
+| `preferences.html/.css/.js` | 九分区设置页面，使用受限原生消息桥访问偏好、网站与 AI 写作配置 |
+| `polish-ui.js` | 润笔对话框：确定润笔范围、流式显示、事实检查提示、接受后替换 |
 | `i18n.js`、`ui-strings.json/.js` | UI 翻译与共享词典；不遍历文章正文作翻译 |
 | `rich-editor.js` | RichDocument、HTML 清理、Markdown 序列化、光标、表格及折叠 |
 | `editor-moon.js` | 编辑器标题和标签的表情循环 |
@@ -375,6 +382,12 @@ GET 接口也只接受正确 Host。所有非 GET 请求需要 `Origin: http://1
 | POST /api/repository | repository、visibility | 调 gh 创建远程仓库 |
 | POST /api/publish | path、revision | 202，启动异步构建推送 |
 | GET /api/publish | 无 | idle / running / success / failed 及消息、结果 |
+| GET /api/ai/status | 无 | AI 配置、索引摘要、风格档案状态、本地模型连接与模型列表 |
+| POST /api/ai/config | baseUrl、model、embeddingModel、includeDrafts、includeHidden | 校验并保存 AI 配置 |
+| POST /api/ai/index | 无 | 增量更新段落索引与向量 |
+| GET/POST /api/ai/profile | text（POST） | 读取／保存风格档案，上限 20000 字符 |
+| POST /api/ai/style | 无 | 用本地模型生成风格档案，旧档案存为 style.previous.md |
+| POST /api/ai/polish | text、mode（light/full/expand）、instruction、path | 200 NDJSON 流：start、batch、delta、done（output、issues、references）或 error |
 | GET /images/... | 路径 | 图片字节，校验图片签名 |
 | GET /vendor/... | 固定白名单 | DOMPurify、Turndown、GFM 浏览器包 |
 
@@ -392,6 +405,20 @@ GET 接口也只接受正确 Host。所有非 GET 请求需要 `Origin: http://1
 - 关闭设置窗口／经菜单退出时请求冲刷队列。发布、创建仓库、标签的新增／重命名／删除仍是明确操作按钮，并无额外保存步骤。
 - 文章正文、Markdown、格式、图片引用、已提交的文章属性修改在停止输入约 1 秒后自动保存并版本备份；切换文章先冲刷，保存中产生的新输入会接着保存。
 - 文章 API 的 YAML/title 验证、revision 冲突和备份失败保护保持原样；失败状态不自动循环重试，继续编辑或 Cmd/Ctrl+S 可以再次尝试。
+
+## 8.2 本地 AI 润笔（第一阶段：风格档案 + 检索，不训练）
+
+- **入口**：编辑器工具栏“✒︎ 润笔”。有选区只润笔选区（富文本用 Turndown 转成 Markdown，MD 模式按 textarea 选区），否则润笔整篇正文，顶部 YAML 不发送也不改动。
+- **流程**：增量更新索引 → 按段落分批（每批约 1500 字，代码围栏不拆开）→ 每批检索相似旧文段落 → 拼装提示词（硬性规则 + 风格档案 + 示范段落 + 草稿）→ 流式返回。
+- **接受前不改文章**：结果在对话框中左右对照，可编辑；点“替换原文”后才写回编辑器，随后走原有自动保存、revision 校验与版本备份。富文本选区替换需先关闭模态框再执行 insertHTML（模态框打开时编辑区是 inert）。整篇替换后重新渲染富文本，撤销栈不覆盖这一步，可从版本备份找回。
+- **索引**：只收 `_posts`，草稿和 `hidden: true` 需在设置中勾选。去掉代码块、HTML、图片和链接地址；按段落合并为约 360 字的块，长段按句子切分。文章内容哈希不变就跳过；向量按段落哈希缓存，换嵌入模型会重算。
+- **检索**：默认字二元组 BM25，不依赖分词库；配置嵌入模型且所有段落都有向量时用余弦相似度，失败回退关键词检索并提示。每篇最多取 2 段、总计约 2400 字，排除当前正在编辑的文章。
+- **风格档案** `style.md`：模型按时间均匀抽样最多 12 篇（每篇约 900 字，总计 10000 字）写风格说明，代码再追加统计特征（句长、段长、标点、连接词、表情、小标题、拉丁字母占比）。档案可直接编辑，修改后自动保存；只有点“生成风格档案”时才把旧版本保存到 `style.previous.md`。
+- **事实检查**：比较润笔前后的数字、链接、图片、行内代码，以及英文词或专有名词（只报告缺失，大小写不敏感，不比较网址片段）。只提示，不阻止替换。
+- **模型服务**：任何 OpenAI 兼容接口，默认 `http://127.0.0.1:8080/v1`（mlx_lm.server）；只接受 127.0.0.1、localhost、::1，不跟随重定向。模型名留空时请求不带 model 字段，使用服务默认模型。推理模型输出的 `<think>…</think>` 会被过滤，即使标签被拆在多个流块中。
+- **数据位置**：`~/Library/Application Support/Moonlit Desk/AI/`（可用 `MOONLIT_AI_HOME` 覆盖）。`config.json` 全局，`<siteKey>/index.json` 与 `<siteKey>/style.md` 按站点隔离；都不在博客目录，不会被发布或进入整站 ZIP。config 由 Node 单独写，避免与 Swift 写 settings.json 互相覆盖。
+- **原生桥**：白名单增加 `api/ai/status`、`api/ai/profile`（可 GET）以及 `api/ai/config`、`api/ai/index`、`api/ai/style`；AI 请求超时 900 秒（其他仍为 180 秒），设置页对索引和生成风格档案也放宽到 900 秒。
+- **限制**：不下载、不打包模型；润笔质量取决于所选模型。尚未做 LoRA 训练（第二阶段）、润笔历史记录、远程 API 或按段落逐条接受。停止后可以接受已生成的部分结果，需要自己检查。
 
 ## 9. 保存与转换机制
 
@@ -499,6 +526,7 @@ git diff --check
 - `editor/workflow.test.js`：临时博客、HTTP 保存、命名、重复备份、图片备份、revision 冲突、备份失败不覆盖、临时 bare Git 远端发布、保留无关文件、无变化跳过、空远端首次推送、错误远端失败。
 - `editor/autosave.test.js`：输入合并、写入中新编辑排队、错误和有效输入恢复、取消旧项目待写入项。
 - `editor/localization.test.js`：默认英文、切换中文、未知语言回退、Swift/浏览器词典一致；HTTP workflow 同时检查保存偏好后只读接口更新。
+- `editor/ai.test.js`：仅本机地址、语料清洗与隐藏／草稿过滤、增量索引与向量缓存、长段切分、风格统计、`<think>` 跨块过滤、分批与提示词、事实检查，以及用模拟 OpenAI 服务跑通配置、索引、风格档案、流式润笔、模型不可用时的错误。
 - `editor/metadata.test.js`：front matter/body 保留、标签／分类／关键词批处理、版本备份、配置注释、部署 root。
 - `LunarPhaseTests.swift`：SunCalc 固定参考数据、新月／满月、北半球／南半球朝向、位置缺失回退。
 - `MoonLocationTests.swift`：IANA 分秒坐标、坐标范围、未知时区、IP 响应校验、默认实现没有系统定位权限调用。

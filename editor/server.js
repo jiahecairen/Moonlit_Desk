@@ -231,6 +231,7 @@ const server = http.createServer(async (request, response) => {
       catch (error) { warning = error.message + ' 保存前请在 MD 编辑器中修正顶部配置。'; }
       return send(response, 200, { title, html: marked(body), frontMatter: header, warning, metadata: warning ? null : require('./metadata').viewMetadata(text) });
     }
+    if (url.pathname.startsWith('/api/ai/') && await require('./ai/routes').handle(request, response, url, { root, source, readBody, send })) return;
     if (request.method === 'GET' && url.pathname.startsWith('/images/')) {
       const file = safePath(source, decodeURIComponent(url.pathname.slice(1)));
       const bytes = fs.readFileSync(file);
@@ -245,7 +246,7 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && Object.hasOwn(vendors, url.pathname)) {
       return send(response, 200, fs.readFileSync(path.join(__dirname, '../node_modules', vendors[url.pathname])), 'text/javascript; charset=utf-8');
     }
-    const assets = { '/autosave.js': ['autosave.js','text/javascript; charset=utf-8'], '/ui-strings.js': ['ui-strings.js','text/javascript; charset=utf-8'], '/i18n.js': ['i18n.js','text/javascript; charset=utf-8'], '/settings-ui.js': ['settings-ui.js','text/javascript; charset=utf-8'], '/rich-editor.js': ['rich-editor.js','text/javascript; charset=utf-8'], '/editor-moon.js': ['editor-moon.js','text/javascript; charset=utf-8'], '/': ['index.html','text/html; charset=utf-8'], '/app.js': ['app.js','text/javascript; charset=utf-8'], '/style.css': ['style.css','text/css; charset=utf-8'] };
+    const assets = { '/autosave.js': ['autosave.js','text/javascript; charset=utf-8'], '/ui-strings.js': ['ui-strings.js','text/javascript; charset=utf-8'], '/i18n.js': ['i18n.js','text/javascript; charset=utf-8'], '/settings-ui.js': ['settings-ui.js','text/javascript; charset=utf-8'], '/polish-ui.js': ['polish-ui.js','text/javascript; charset=utf-8'], '/rich-editor.js': ['rich-editor.js','text/javascript; charset=utf-8'], '/editor-moon.js': ['editor-moon.js','text/javascript; charset=utf-8'], '/': ['index.html','text/html; charset=utf-8'], '/app.js': ['app.js','text/javascript; charset=utf-8'], '/style.css': ['style.css','text/css; charset=utf-8'] };
     if (request.method === 'GET' && Object.hasOwn(assets, url.pathname)) {
       const [file, mime] = assets[url.pathname];
       return send(response, 200, fs.readFileSync(path.join(__dirname, file)), mime);

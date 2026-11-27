@@ -18,11 +18,12 @@
 - 新增语言注册 editor/languages.json 与字典，运行 npm run i18n:generate；build 自动生成 ui-strings.js。不要在 Swift/Node/浏览器重新写死只支持 en/zh。
 - 默认英文，支持中文，语言存 settings.json 的 language=en/zh；不要翻译用户文章、标题、标签内容。
 - 左键菜单只放编辑器、文章、服务、备份等操作；右键菜单放 Settings、About、Quit。
-- 全部长期设置统一到带八分区侧边栏的原生窗口：SettingsWindow.swift + 本地 WKWebView + editor/preferences.*。
+- 全部长期设置统一到带九分区侧边栏的原生窗口（含 AI Writing）：SettingsWindow.swift + 本地 WKWebView + editor/preferences.*。
 - 旧浏览器 settings-dialog 已移除；编辑器 Settings 按钮走 moonlitdesk://settings，应用 Info.plist 注册 scheme。
 - 本地桥仅接受指定本地文件的主 frame，动作和 API 有白名单，不能放开任意 URL / shell；网站接口走 EditorFeature.request 的项目与 token/Origin 校验。
 - Localization.swift 与 i18n.js 共用 ui-strings.json/.js；两个词典保持一致。API /api/preferences 是只读语言同步入口。
 - 单独修改语言不能变更登录项；只有用户改变 checkbox 时调用 ServiceManagement。
+- 本地 AI 润笔（editor/ai/、polish-ui.js）：只接受本机 OpenAI 兼容模型地址；结果须用户点“替换原文”才写回；AI 数据在 Application Support/Moonlit Desk/AI，不进博客目录；不要在没有要求时接入远程 API 或自动下载模型。
 
 二、用户已经明确的产品要求
 1. 默认富文本，像直接写文章；MD 按钮能切换进入和退出 Markdown 编辑。

@@ -61,7 +61,8 @@ final class EditorFeature: NSObject, LauncherFeature {
             throw NSError(domain: "Editor", code: 1, userInfo: [NSLocalizedDescriptionKey: "编辑器项目不匹配。"])
         }
         var request = URLRequest(url: address.appendingPathComponent(path))
-        request.timeoutInterval = 180
+        // Local model calls (style profile, embeddings) can take minutes on large models.
+        request.timeoutInterval = path.hasPrefix("api/ai/") ? 900 : 180
         if let payload {
             request.httpMethod = "POST"
             request.setValue("http://127.0.0.1:4510", forHTTPHeaderField: "Origin")
