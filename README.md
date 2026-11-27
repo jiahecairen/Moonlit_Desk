@@ -63,7 +63,7 @@ uses port 4000 and the editor uses port 4510.
 
 Moonlit Desk defaults to English. Right-click (or Control-click) the menu bar icon
 and choose **Settings…**. A single sidebar window contains General, Blog & Folders,
-Backups, Moon & Appearance, Website, Tags & Categories, GitHub Publishing, and About.
+Backups, Moon & Appearance, Website, Tags & Categories, GitHub Publishing, AI Writing, and About.
 Choose **简体中文** from the language dropdown in General to switch immediately.
 The choice is saved automatically; the menu bar and open editors follow it. Article text, titles, and taxonomy names are not translated.
 
@@ -135,6 +135,50 @@ filenames separated by underscores. A manually supplied filename takes priority.
 
 Images support PNG, JPEG, GIF, and WebP, up to 10 MB each. Uploaded files are stored
 under images/editor/ inside the configured Hexo content directory.
+
+## Local AI writing (polish)
+
+**✒︎ 润笔 / Polish** in the editor toolbar turns a plain-language draft into prose in
+your own style, using a model that runs on this Mac. Select text to polish only that
+part; with nothing selected, the whole body is polished (front matter is never sent).
+Choose Light touch, Rewrite, or Expand, review the result side by side, edit it, and
+click **Replace Draft**. Nothing changes until you accept; the accepted text then goes
+through the normal autosave and version backup.
+
+How it learns your style (no training required):
+
+- **Article index**: published posts (drafts and hidden posts only if you opt in) are
+  split into paragraphs, without code, embedded HTML, images, or link targets. Each
+  polish retrieves your most similar earlier passages as examples (at most two per
+  post; the article being edited is excluded). Retrieval uses character-bigram keyword
+  matching, or semantic vectors when an embedding model is configured. Only changed
+  posts are re-indexed.
+- **Style profile**: **Settings → AI Writing → Generate Style Profile** asks the model
+  to describe your tone, rhythm, and habits from posts sampled across your timeline, and
+  appends measured statistics (sentence length, punctuation, common connectors). It is
+  a Markdown file you can edit; changes save automatically.
+- **Fact check**: after polishing, numbers, links, images, inline code, and English
+  terms that disappeared or appeared are listed for review.
+
+Any OpenAI-compatible local server works: `mlx_lm.server` (default
+`http://127.0.0.1:8080/v1`), Ollama (`:11434/v1`), or LM Studio (`:1234/v1`). Only
+loopback addresses are accepted, so drafts and articles never leave this computer.
+Moonlit Desk does not download or bundle models. For example:
+
+~~~sh
+mlx_lm.server --model <an MLX chat model you have downloaded> --port 8080
+~~~
+
+AI data lives outside the blog and is never published:
+
+~~~text
+~/Library/Application Support/Moonlit Desk/AI/config.json          server, models, corpus options
+~/Library/Application Support/Moonlit Desk/AI/<site-key>/index.json paragraph index (rebuildable)
+~/Library/Application Support/Moonlit Desk/AI/<site-key>/style.md   your editable style profile
+~~~
+
+`MOONLIT_AI_HOME` overrides this folder. Without the macOS app, edit `config.json`
+directly; the editor's Polish button works with Node only.
 
 ## Backups
 

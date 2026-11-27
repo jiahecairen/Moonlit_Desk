@@ -213,11 +213,12 @@ final class Launcher: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "open-repository": NSWorkspace.shared.open(URL(string: "https://github.com/jiahecairen/Moonlit_Desk")!)
         case "api":
             guard let path = input["path"] as? String,
-                  ["api/settings", "api/site", "api/taxonomy", "api/deployment", "api/repository"].contains(path),
+                  ["api/settings", "api/site", "api/taxonomy", "api/deployment", "api/repository",
+                   "api/ai/status", "api/ai/profile", "api/ai/config", "api/ai/index", "api/ai/style"].contains(path),
                   let editor = editorFeature else { throw settingError("请先在设置中连接博客") }
             guard input["projectPath"] as? String == project?.path else { throw settingError("编辑器项目不匹配。") }
             let payload = input["payload"] as? [String: Any]
-            if !["api/settings", "api/taxonomy"].contains(path) && payload == nil { throw settingError("设置无效。") }
+            if !["api/settings", "api/taxonomy", "api/ai/status", "api/ai/profile"].contains(path) && payload == nil { throw settingError("设置无效。") }
             return try await editor.request(path: path, payload: payload)
         default: throw settingError("设置无效。")
         }

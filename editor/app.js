@@ -374,7 +374,7 @@ document.querySelectorAll('[data-command]').forEach(button => button.addEventLis
   }
 }));
 function updateToolbar() {
-  for (const control of document.querySelectorAll('.toolbar [data-command], .toolbar [data-rich-only], #insert-link, #insert-image, #insert-fold')) {
+  for (const control of document.querySelectorAll('.toolbar [data-command], .toolbar [data-rich-only], #insert-link, #insert-image, #insert-fold, #polish-button')) {
     control.disabled = !currentPath || publishing || (richMode ? !richReady : control.hasAttribute('data-rich-only'));
     if (control.hasAttribute('aria-pressed')) {
       let active = false;

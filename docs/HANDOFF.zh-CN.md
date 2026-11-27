@@ -8,7 +8,7 @@
 
 默认英文，支持中文；语言在 Application Support/settings.json 的 language 键中保存。**左键**菜单为写作／服务／备份操作，**右键**为 Settings、About、Quit。不要重新把配置子菜单混入左键菜单。
 
-统一设置窗口是 SettingsWindow.swift + 本地 WKWebView，页面在 editor/preferences.*。八个分区：General、Blog & Folders、Backups、Moon & Appearance、Website、Tags & Categories、GitHub Publishing、About。原生偏好、博客目录、创建博客、备份目标／频率、登录项、网站与部署设置全部归入此窗口。
+统一设置窗口是 SettingsWindow.swift + 本地 WKWebView，页面在 editor/preferences.*。九个分区：General、Blog & Folders、Backups、Moon & Appearance、Website、Tags & Categories、GitHub Publishing、AI Writing、About。原生偏好、博客目录、创建博客、备份目标／频率、登录项、网站与部署设置全部归入此窗口。
 
 浏览器 Settings 按钮走 moonlitdesk://settings，要求应用已注册 URL scheme。旧 settings-dialog HTML 与站点设置 JS 已移除，settings-ui.js 只留文章属性和入口。文章属性不属于全局配置，仍在编辑页面。
 
@@ -25,6 +25,14 @@
 新增 autosave.js / autosave.test.js、languages.json、generate-i18n.js、ui-language.js。新增语言只加注册条目和字典，再运行 npm run i18n:generate；build 自动生成 JS 词典包。已在隔离博客验证未按保存按钮输入、自动备份、刷新并重新打开正文。
 
 设置旧项目的待写入项须在切换时取消，桥 api 请求携带 projectPath 并由原生核对，防止防抖中的旧表单写到新博客。错误应显示真实状态，不能用“已自动保存”掩盖未完成或失败的输入。
+
+### 本地 AI 润笔（第一阶段，2026-11-27）
+
+编辑器工具栏新增“✒︎ 润笔”，把大白话改写成作者本人的文风。不训练模型：每次润笔检索作者相似的旧文段落作为示范，再加上可编辑的风格档案 style.md。代码在 editor/ai/（config、provider、corpus、style、polish、routes）和 editor/polish-ui.js；设置页新增 AI Writing 分区。细节见项目说明 8.2。
+
+必须保持：只接受本机模型地址；结果只有用户点“替换原文”才写回，之后走原有保存与备份；AI 数据在 Application Support/Moonlit Desk/AI，不进博客目录；顶部 YAML 不发送给模型。
+
+验证情况：ai.test.js 用模拟 OpenAI 服务覆盖了全部接口。浏览器中用隔离博客和模拟模型验证了整篇替换、富文本选区替换、MD 选区替换、停止、自动保存与版本备份，以及设置页的中英文、地址校验、风格档案生成和编辑。没有用真实大模型测试润笔质量（本机缓存里没有可用的模型权重），也没有在打包后的原生设置窗口里实际点击，只编译通过。第二阶段（LoRA 训练）未开始。
 
 ## 1. 接手时最重要的事实
 

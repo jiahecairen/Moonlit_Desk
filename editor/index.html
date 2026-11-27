@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Moonlit 🌗 Desk · 编辑器</title><link rel="stylesheet" href="/style.css"><script defer src="/ui-strings.js"></script><script defer src="/autosave.js"></script><script defer src="/i18n.js"></script><script defer src="/editor-moon.js"></script><script defer src="/vendor/purify.js"></script><script defer src="/vendor/turndown.js"></script><script defer src="/vendor/gfm.js"></script><script defer src="/rich-editor.js"></script><script defer src="/app.js"></script><script defer src="/settings-ui.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Moonlit 🌗 Desk · 编辑器</title><link rel="stylesheet" href="/style.css"><script defer src="/ui-strings.js"></script><script defer src="/autosave.js"></script><script defer src="/i18n.js"></script><script defer src="/editor-moon.js"></script><script defer src="/vendor/purify.js"></script><script defer src="/vendor/turndown.js"></script><script defer src="/vendor/gfm.js"></script><script defer src="/rich-editor.js"></script><script defer src="/app.js"></script><script defer src="/settings-ui.js"></script><script defer src="/polish-ui.js"></script></head>
 <body>
 <aside>
   <header><a class="brand" id="blog-link" href="http://127.0.0.1:4000/" target="_blank" rel="noopener" aria-label="打开本地博客">Moonlit <span data-editor-moon aria-hidden="true">🌗</span> Desk</a><span id="site-name">文章编辑器</span></header>
@@ -34,6 +34,7 @@
     <input id="images" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
     <button id="advanced-button" aria-expanded="false" aria-controls="advanced-tools">高级 ▾</button>
     <button id="md-button" aria-pressed="false">MD 编辑器</button>
+    <button id="polish-button" title="用本地 AI 把大白话润成你的文风">✒︎ 润笔</button>
   </div>
   <div id="advanced-tools" class="toolbar advanced-toolbar" role="toolbar" aria-label="高级编辑工具" hidden>
     <button data-wrap="~~" data-command="strikeThrough" aria-pressed="false">删除线</button>
@@ -68,6 +69,18 @@
 <label>保存位置<select name="zone"><option value="_drafts">草稿</option><option value="_posts">文章</option></select></label>
 
 <div class="dialog-actions"><button type="button" id="cancel-new">取消</button><button type="submit" class="primary">开始写作</button></div>
+</form>
+</dialog>
+<dialog id="polish-dialog" class="polish-dialog">
+<form id="polish-form" method="dialog">
+<h2>润笔</h2>
+<p class="hint-text" id="polish-scope"></p>
+<div class="polish-options"><label>方式<select id="polish-mode"><option value="light">轻度修饰</option><option value="full" selected>成文</option><option value="expand">扩写</option></select></label><label class="polish-grow">额外要求<input id="polish-instruction" maxlength="500" placeholder="可选，例如：语气轻松一些"></label></div>
+<div class="polish-columns"><label>原文（可修改）<textarea id="polish-input" rows="14" spellcheck="false"></textarea></label><label>润色结果（可修改）<textarea id="polish-output" rows="14" spellcheck="false"></textarea></label></div>
+<ul id="polish-issues" class="polish-issues" role="alert" hidden></ul>
+<details id="polish-references" class="polish-references" hidden><summary id="polish-reference-summary"></summary><ol id="polish-reference-list"></ol></details>
+<p id="polish-status" class="polish-status" role="status" aria-live="polite"></p>
+<div class="dialog-actions"><button type="button" id="polish-cancel">关闭</button><button type="button" id="polish-stop" hidden>停止</button><button type="button" id="polish-run">开始润笔</button><button type="button" id="polish-accept" class="primary" disabled>替换原文</button></div>
 </form>
 </dialog>
 </body></html>
