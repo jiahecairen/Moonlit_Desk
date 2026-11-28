@@ -237,6 +237,24 @@ const server = http.createServer(async (request, response) => {
       const [, mime] = imageType(bytes);
       return send(response, 200, bytes, mime);
     }
+    if (url.pathname.startsWith('/api/writer/')) {
+      const writer = require('./writer');
+      const route = url.pathname.slice('/api/writer/'.length);
+      if (request.method === 'GET' && route === 'state') {
+        const folder = writer.workspace();
+        if (!folder) return send(response, 200, { configured: false });
+        return send(response, 200, { configured: true, workspace: folder, ...(await writer.bridge('state')), jobs: writer.jobs() });
+      }
+      if (request.method === 'GET' && route === 'jobs') return send(response, 200, writer.jobs());
+      if (request.method !== 'POST') fail(404, '找不到这个页面。');
+      const input = JSON.parse((await readBody(request, 2 * 1024 * 1024)).toString() || '{}');
+      if (route === 'workspace') return send(response, 200, { workspace: writer.saveWorkspace(input.workspace) });
+      if (route === 'bridge') return send(response, 200, await writer.bridge(input.command, input.args || {}));
+      if (route === 'job') return send(response, 202, writer.startJob(input.type, input.args || {}));
+      if (route === 'cancel') return send(response, 200, writer.cancelJob());
+      if (route === 'submit') return send(response, 200, await writer.submitArticle(root, input.path, input));
+      fail(404, '找不到这个页面。');
+    }
     const vendors = {
       '/vendor/purify.js': 'dompurify/dist/purify.min.js',
       '/vendor/turndown.js': 'turndown/dist/turndown.js',
@@ -245,7 +263,7 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && Object.hasOwn(vendors, url.pathname)) {
       return send(response, 200, fs.readFileSync(path.join(__dirname, '../node_modules', vendors[url.pathname])), 'text/javascript; charset=utf-8');
     }
-    const assets = { '/autosave.js': ['autosave.js','text/javascript; charset=utf-8'], '/ui-strings.js': ['ui-strings.js','text/javascript; charset=utf-8'], '/i18n.js': ['i18n.js','text/javascript; charset=utf-8'], '/settings-ui.js': ['settings-ui.js','text/javascript; charset=utf-8'], '/rich-editor.js': ['rich-editor.js','text/javascript; charset=utf-8'], '/editor-moon.js': ['editor-moon.js','text/javascript; charset=utf-8'], '/': ['index.html','text/html; charset=utf-8'], '/app.js': ['app.js','text/javascript; charset=utf-8'], '/style.css': ['style.css','text/css; charset=utf-8'] };
+    const assets = { '/autosave.js': ['autosave.js','text/javascript; charset=utf-8'], '/ui-strings.js': ['ui-strings.js','text/javascript; charset=utf-8'], '/i18n.js': ['i18n.js','text/javascript; charset=utf-8'], '/settings-ui.js': ['settings-ui.js','text/javascript; charset=utf-8'], '/rich-editor.js': ['rich-editor.js','text/javascript; charset=utf-8'], '/editor-moon.js': ['editor-moon.js','text/javascript; charset=utf-8'], '/': ['index.html','text/html; charset=utf-8'], '/writer': ['writer.html','text/html; charset=utf-8'], '/writer-ui.js': ['writer-ui.js','text/javascript; charset=utf-8'], '/writer.css': ['writer.css','text/css; charset=utf-8'], '/app.js': ['app.js','text/javascript; charset=utf-8'], '/style.css': ['style.css','text/css; charset=utf-8'] };
     if (request.method === 'GET' && Object.hasOwn(assets, url.pathname)) {
       const [file, mime] = assets[url.pathname];
       return send(response, 200, fs.readFileSync(path.join(__dirname, file)), mime);
@@ -257,3 +275,6 @@ const server = http.createServer(async (request, response) => {
   }
 });
 server.listen(port, '127.0.0.1', () => console.log('Moonlit Desk Editor · ' + origin));
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => { require('./writer').shutdown(); process.exit(0); });
+}

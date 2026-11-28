@@ -239,3 +239,6 @@ small { color: var(--muted); font-size: 12px; }
 #rich-body :not(pre) > code { padding:2px 5px; border-radius:4px; background:#f0edf3; color:#764568; }
 #rich-body hr { border:0; border-top:1px solid #cfc6d5; margin:24px 0; }
 #rich-body sub, #rich-body sup { font-size:.75em; }
+
+.side-link { color: var(--muted); font-size: 14px; text-decoration: none; padding: 4px 6px; }
+.side-link:hover { color: var(--text); text-decoration: underline; }

@@ -133,6 +133,7 @@ function setDocument(file, text, rev, title, isNew = false) {
   editor.disabled = false;
   $('#save').disabled = publishing;
   $('#publish').disabled = publishing;
+  $('#submit-writer').disabled = false;
   $('#heading').textContent = title;
   $('#file-path').textContent = file;
   renderList();
@@ -303,6 +304,52 @@ async function pollPublish() {
     publishPoll = setTimeout(pollPublish, 3000);
   }
 }
+
+function askSubmit() {
+  return new Promise(resolve => {
+    const dialog = document.createElement('dialog');
+    const form = document.createElement('form'); form.method = 'dialog';
+    const heading = document.createElement('h2'); heading.textContent = MoonlitI18n.t('投递到写作模型');
+    const hint = document.createElement('p'); hint.className = 'hint-text';
+    hint.textContent = MoonlitI18n.t('这篇文章会作为训练数据的定稿。如果有动笔前的笔记，粘贴在下面，它会成为这篇文章的素材。');
+    const label = document.createElement('label'); label.textContent = MoonlitI18n.t('笔记（可选）');
+    const notes = document.createElement('textarea'); notes.rows = 7;
+    notes.style.cssText = 'height:auto;border:1px solid var(--line);border-radius:7px;padding:10px;font:14px/1.7 -apple-system,sans-serif';
+    label.append(notes);
+    const draftLabel = document.createElement('label'); draftLabel.className = 'checkbox-label';
+    const draft = document.createElement('input'); draft.type = 'checkbox'; draft.checked = true;
+    draftLabel.append(draft, ' ' + MoonlitI18n.t('同时使用第一次保存的版本作为初稿'));
+    const actions = document.createElement('div'); actions.className = 'dialog-actions';
+    for (const [text, value] of [['取消', 'cancel'], ['投递', 'ok']]) {
+      const button = document.createElement('button'); button.textContent = MoonlitI18n.t(text);
+      button.value = value; button.type = 'submit'; if (value === 'ok') button.className = 'primary'; actions.append(button);
+    }
+    form.append(heading, hint, label, draftLabel, actions); dialog.append(form); document.body.append(dialog);
+    dialog.addEventListener('close', () => {
+      const result = dialog.returnValue === 'ok' ? { notes: notes.value, includeDraft: draft.checked } : null;
+      dialog.remove(); resolve(result);
+    }, { once: true });
+    dialog.showModal(); notes.focus();
+  });
+}
+
+$('#submit-writer').addEventListener('click', async () => {
+  if (!currentPath || saving || uploading || publishing) return;
+  try {
+    const writer = await api('/api/writer/state');
+    if (!writer.configured) {
+      if (await askConfirm('还没有连接写作模型工作区。现在打开写作模型页面进行连接吗？')) location.href = '/writer';
+      return;
+    }
+  } catch (error) { return message(error.message, true); }
+  const choice = await askSubmit();
+  if (!choice) return;
+  if (!await save()) return;
+  try {
+    const result = await api('/api/writer/submit', jsonRequest({ path: currentPath, ...choice }));
+    message(MoonlitI18n.t('已投递到写作模型：') + result.title + (result.has_source ? '' : MoonlitI18n.t('（没有笔记，等待反推素材）')));
+  } catch (error) { message(error.message, true); }
+});
 
 $('#publish').addEventListener('click', async () => {
   if (!currentPath || saving || uploading || publishing) return;

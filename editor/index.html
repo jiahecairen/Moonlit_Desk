@@ -4,12 +4,12 @@
 <body>
 <aside>
   <header><a class="brand" id="blog-link" href="http://127.0.0.1:4000/" target="_blank" rel="noopener" aria-label="打开本地博客">Moonlit <span data-editor-moon aria-hidden="true">🌗</span> Desk</a><span id="site-name">文章编辑器</span></header>
-  <button id="new" class="primary">新建文章</button><button id="settings-button">设置</button>
+  <button id="new" class="primary">新建文章</button><button id="settings-button">设置</button><a id="writer-link" class="side-link" href="/writer">写作模型</a>
   <input id="filter" type="search" placeholder="搜索文章与草稿" aria-label="搜索文章与草稿">
   <nav id="articles" aria-label="文章列表"></nav>
 </aside>
 <main>
-  <header class="topbar"><div><h1 id="heading">开始写作</h1><p id="file-path">选择一篇文章，或新建一篇</p></div><div class="publish-actions"><button id="publish" disabled>发布到 GitHub</button><button id="save" class="primary" disabled hidden>保存文章 <kbd>⌘S</kbd></button></div></header>
+  <header class="topbar"><div><h1 id="heading">开始写作</h1><p id="file-path">选择一篇文章，或新建一篇</p></div><div class="publish-actions"><button id="submit-writer" disabled title="把这篇文章作为训练数据投递到写作模型">投递到写作模型</button><button id="publish" disabled>发布到 GitHub</button><button id="save" class="primary" disabled hidden>保存文章 <kbd>⌘S</kbd></button></div></header>
   <details id="article-properties">
     <summary>文章属性 · 标题、标签、分类与关键词</summary>
     <fieldset id="metadata-fields" disabled>

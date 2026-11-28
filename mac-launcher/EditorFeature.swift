@@ -19,7 +19,10 @@ final class EditorFeature: NSObject, LauncherFeature {
         let item = NSMenuItem(title: L10n.text(opening ? "正在打开编辑器…" : "打开文章编辑器"), action: #selector(openEditor), keyEquivalent: "")
         item.target = self
         item.isEnabled = !opening
-        return [item]
+        let writer = NSMenuItem(title: L10n.text("打开写作模型"), action: #selector(openWriter), keyEquivalent: "")
+        writer.target = self
+        writer.isEnabled = !opening
+        return [item, writer]
     }
 
     func shutdown() {
@@ -78,14 +81,18 @@ final class EditorFeature: NSObject, LauncherFeature {
     }
 
     @objc func openEditor() { open(newArticle: false) }
+    @objc func openWriter() { open(url: address.appendingPathComponent("writer")) }
     func open(newArticle: Bool) {
+        open(url: newArticle ? URL(string: "http://127.0.0.1:4510/?new=1")! : address)
+    }
+    private func open(url: URL) {
         guard !opening else { return }
         opening = true
         Task {
             defer { opening = false }
             do {
                 try await ensureReady()
-                NSWorkspace.shared.open(newArticle ? URL(string: "http://127.0.0.1:4510/?new=1")! : address)
+                NSWorkspace.shared.open(url)
             } catch {
                 let alert = NSAlert()
                 alert.messageText = L10n.text("无法打开文章编辑器")

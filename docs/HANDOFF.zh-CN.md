@@ -26,6 +26,15 @@
 
 设置旧项目的待写入项须在切换时取消，桥 api 请求携带 projectPath 并由原生核对，防止防抖中的旧表单写到新博客。错误应显示真实状态，不能用“已自动保存”掩盖未完成或失败的输入。
 
+### 写作模型工作台（可选功能）
+
+编辑器新增 `/writer` 页面（左键菜单“打开写作模型”、侧栏“写作模型”链接、编辑页“投递到写作模型”按钮）。它连接一个外部的写作模型工作区：包含可执行 `laysay`、`models.yaml` 和 `lsw/bridge.py` 的目录，路径保存在 Application Support/Moonlit Desk/writer.json，不写入代码。
+
+- editor/writer.js：只调用白名单 bridge 命令（`laysay bridge <命令>`，JSON 走标准输入）和白名单后台任务（reverse、build、train、generate、check、quantize、write），参数逐项校验；同一时间只运行一个任务，编辑器退出时终止。
+- 投递只读取文章，并从文章版本备份中取第一个有效版本作为初稿，不修改博客。
+- 加载模型的任务先查询 GPU 剩余内存，其他本地模型占用时拒绝开始；工作区一侧也会再检查一次。
+- 页面为 writer.html / writer-ui.js / writer.css，界面字符串已加入 ui-strings.json。测试见 writer.test.js。
+
 ## 1. 接手时最重要的事实
 
 1. 这是独立的 Hexo 工具，不是某个网站主题。不得把使用者博客路径、域名、文章或账号硬编码回工具。

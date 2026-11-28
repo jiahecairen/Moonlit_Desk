@@ -19,7 +19,8 @@
     keys = Object.keys(strings).filter(key => key.length > 1).sort((a,b) => b.length-a.length);
     document.documentElement.lang = locale.htmlLang;
     if (document.title.startsWith('Moonlit Desk — ')) document.title = 'Moonlit Desk — ' + t('设置');
-    if (/ · /.test(document.title)) document.title = document.title.replace(/ · .*$/, ' · ' + t('编辑器'));
+    if (/ · (编辑器|Editor)$/.test(document.title)) document.title = document.title.replace(/ · .*$/, ' · ' + t('编辑器'));
+    else if (/ · (写作模型|Writing Model)$/.test(document.title)) document.title = document.title.replace(/ · .*$/, ' · ' + t('写作模型'));
     for (const [node, original] of nodes) if (node.isConnected) node.nodeValue = t(original);
     for (const [element, name, original] of attributes) if (element.isConnected) element.setAttribute(name,t(original));
     for (const [element, original] of dynamic) if (element.isConnected) element.textContent = t(original);
